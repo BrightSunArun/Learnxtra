@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/anushkagupta/fvm/versions/3.29.0/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/anushkagupta/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/anushkagupta/Documents/Pixel Projects/learnxtra_child/android/app/.cxx/RelWithDebInfo/6m405o2y/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/anushkagupta/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/anushkagupta/Documents/Pixel Projects/learnxtra_child/android/app/.cxx/RelWithDebInfo/6m405o2y/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}

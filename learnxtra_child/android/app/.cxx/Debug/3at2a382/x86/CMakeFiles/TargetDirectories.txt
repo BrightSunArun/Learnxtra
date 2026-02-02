@@ -1,0 +1,2 @@
+/Users/anushkagupta/Documents/Pixel Projects/learnxtra_child/android/app/.cxx/Debug/3at2a382/x86/CMakeFiles/edit_cache.dir
+/Users/anushkagupta/Documents/Pixel Projects/learnxtra_child/android/app/.cxx/Debug/3at2a382/x86/CMakeFiles/rebuild_cache.dir
