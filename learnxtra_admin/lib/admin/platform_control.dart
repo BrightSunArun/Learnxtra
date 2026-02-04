@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:LearnXtraAdmin/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
@@ -31,9 +33,10 @@ class PlatformControlsPage extends StatelessWidget {
           border: Border.all(color: AppColors.gray200.withOpacity(0.5)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4))
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
           ]),
       child: Row(
         children: [
@@ -45,12 +48,20 @@ class PlatformControlsPage extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                       color: AppColors.textDark)),
-              Text(sub, style: const TextStyle(color: AppColors.mutedTeal)),
+              Text(
+                sub,
+                style: const TextStyle(
+                  color: AppColors.mutedTeal,
+                ),
+              ),
             ],
           ),
           const Spacer(),
           Switch(
-              value: val, activeColor: AppColors.cyanAccent, onChanged: (v) {}),
+            value: val,
+            activeColor: AppColors.cyanAccent,
+            onChanged: (v) {},
+          ),
         ],
       ),
     );

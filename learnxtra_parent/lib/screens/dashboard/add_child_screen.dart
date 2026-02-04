@@ -339,6 +339,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         MaterialPageRoute(
           builder: (_) => ChildConnectionCodeScreen(
             childId: childIdFromServer,
+            childName: name,
           ),
         ),
       );

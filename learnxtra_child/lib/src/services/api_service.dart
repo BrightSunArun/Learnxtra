@@ -276,4 +276,34 @@ class ApiService {
 
     return _handleResponse(response) as Map<String, dynamic>;
   }
+
+  Future<dynamic> getEmergencyContacts({
+    required String parentId,
+    Map<String, String>? extraHeaders,
+  }) async {
+    final path = 'child/emergency-contacts/$parentId';
+
+    final mergedHeaders = _mergeHeaders(extraHeaders);
+    final uri = _buildUri(path);
+
+    final response =
+        await http.get(uri, headers: mergedHeaders).timeout(timeout);
+
+    return _handleResponse(response);
+  }
+
+  Future<dynamic> getScreenTime({
+    required String childId,
+    Map<String, String>? extraHeaders,
+  }) async {
+    final path = 'child/$childId/screen-time';
+
+    final mergedHeaders = _mergeHeaders(extraHeaders);
+    final uri = _buildUri(path);
+
+    final response =
+        await http.get(uri, headers: mergedHeaders).timeout(timeout);
+
+    return _handleResponse(response);
+  }
 }

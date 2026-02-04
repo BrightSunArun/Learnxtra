@@ -21,28 +21,28 @@ class ChildDetailsScreen extends StatefulWidget {
 }
 
 class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
-  bool _isLoading = true;
+  bool isLoading = true;
   bool isDeleting = false;
   Map<String, dynamic>? _childData;
-  String? _errorMessage;
+  String? errorMessage;
 
-  late final ApiService _apiService;
+  late final ApiService apiService;
 
   @override
   void initState() {
     super.initState();
-    _apiService = Get.find<ApiService>();
+    apiService = Get.find<ApiService>();
     _fetchChildDetails();
   }
 
   Future<void> _fetchChildDetails() async {
     setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+      isLoading = true;
+      errorMessage = null;
     });
 
     try {
-      final response = await _apiService.getChildDetails(widget.childId);
+      final response = await apiService.getChildDetails(widget.childId);
 
       if (response['success'] == true && response['child'] != null) {
         setState(() {
@@ -54,17 +54,17 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
     } catch (e) {
       print("Error fetching child details: $e");
       setState(() {
-        _errorMessage = "Failed to load child details. Please try again.";
+        errorMessage = "Failed to load child details. Please try again.";
       });
       if (mounted) {
         getSnackbar(
           title: "Error",
-          message: _errorMessage ?? "Something went wrong",
+          message: errorMessage ?? "Something went wrong",
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => isLoading = false);
       }
     }
   }
@@ -96,39 +96,33 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
 
     setState(() => isDeleting = true);
 
-    getSnackbar(
-      title: "API will be implemented soon",
-      message: "Child profile delete functionality will be available soon",
-    );
+    try {
+      final response = await apiService.deleteChild(widget.childId);
 
-    // try {
-    //   final response = await _apiService.deleteChild(widget.childId);
-
-    //   if (response['success'] == true) {
-    //     if (mounted) {
-    //       getSnackbar(
-    //         title: "Success",
-    //         message: "Child profile deleted successfully",
-    //         isError: false,
-    //       );
-    //       Navigator.pop(context, true); // Signal parent screen to refresh list
-    //     }
-    //   } else {
-    //     throw Exception(response['message'] ?? 'Delete failed');
-    //   }
-    // } catch (e) {
-    //   print("Error deleting child: $e");
-    //   if (mounted) {
-    //     getSnackbar(
-    //       title: "Error",
-    //       message: "Failed to delete child profile. Please try again.",
-    //     );
-    //   }
-    // } finally {
-    //   if (mounted) {
-    //     setState(() => _isDeleting = false);
-    //   }
-    // }
+      if (response['success'] == true) {
+        if (mounted) {
+          getSnackbar(
+            title: "Success",
+            message: "Child profile deleted successfully",
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        throw Exception(response['message'] ?? 'Delete failed');
+      }
+    } catch (e) {
+      print("Error deleting child: $e");
+      if (mounted) {
+        getSnackbar(
+          title: "Error",
+          message: "Failed to delete child profile. Please try again.",
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isDeleting = false);
+      }
+    }
   }
 
   Future<void> _goToEditScreen() async {
@@ -175,7 +169,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
         elevation: 0,
         centerTitle: true,
         actions: [
-          if (!_isLoading && _childData != null)
+          if (!isLoading && _childData != null)
             PopupMenuButton<String>(
               color: Colors.white,
               icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -270,9 +264,9 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
         // ],
       ),
       body: SafeArea(
-        child: _isLoading
+        child: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : _errorMessage != null
+            : errorMessage != null
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -281,7 +275,7 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                             size: 64, color: AppColors.error),
                         const SizedBox(height: 16),
                         Text(
-                          _errorMessage!,
+                          errorMessage!,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,

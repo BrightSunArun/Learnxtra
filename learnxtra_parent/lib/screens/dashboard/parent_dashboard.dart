@@ -6,7 +6,6 @@ import 'package:LearnXtraParent/screens/dashboard/child_details.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:LearnXtraParent/services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
@@ -28,17 +27,15 @@ class _ParentDashboardState extends State<ParentDashboard> {
   bool isLoading = true;
   String? errorMessage;
 
-  // For scroll indicators + arrows
   final ScrollController _scrollController = ScrollController();
   bool _showLeftArrow = false;
-  bool _showRightArrow = true; // Initially assume there might be more
+  bool _showRightArrow = true;
 
   @override
   void initState() {
     super.initState();
     _loadDashboard();
 
-    // Update arrow visibility based on scroll position
     _scrollController.addListener(() {
       if (!mounted) return;
       final pos = _scrollController.position;
@@ -51,12 +48,11 @@ class _ParentDashboardState extends State<ParentDashboard> {
       });
     });
 
-    // Initial check after first frame (in case few items)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _scrollController.hasClients) {
         final pos = _scrollController.position;
         setState(() {
-          _showRightArrow = pos.maxScrollExtent > 20; // small threshold
+          _showRightArrow = pos.maxScrollExtent > 20;
           _showLeftArrow = false;
         });
       }
@@ -78,18 +74,28 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
       final response = await api.getParentDashboard();
 
+      if (!mounted) return;
+
       setState(() {
         dashboardData = response;
         isLoading = false;
       });
+
       final name = dashboardData?['parentName'] as String?;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('parent_full_name', name.toString());
+      await prefs.setString('parent_full_name', name ?? '');
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> _refreshIfNeeded(dynamic result) async {
+    if (result == true) {
+      await _loadDashboard();
     }
   }
 
@@ -108,14 +114,13 @@ class _ParentDashboardState extends State<ParentDashboard> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildScreenTimeSummary(),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      const Text(
                         "My Children",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
@@ -126,9 +131,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
                           color: AppColors.primaryTeal,
                           size: 30,
                         ),
-                        onPressed: () => Get.to(
-                          () => const AddChildScreen(),
-                        ),
+                        onPressed: () => Get.to(() => const AddChildScreen()),
                       )
                     ],
                   ),
@@ -155,8 +158,6 @@ class _ParentDashboardState extends State<ParentDashboard> {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Only this method changed significantly
   Widget _buildChildrenList() {
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -204,8 +205,6 @@ class _ParentDashboardState extends State<ParentDashboard> {
       alignment: Alignment.center,
       children: [
         listView,
-
-        // Left Arrow
         if (_showLeftArrow)
           Positioned(
             left: 0,
@@ -239,8 +238,6 @@ class _ParentDashboardState extends State<ParentDashboard> {
               ),
             ),
           ),
-
-        // Right Arrow
         if (_showRightArrow)
           Positioned(
             right: 0,
@@ -295,10 +292,14 @@ class _ParentDashboardState extends State<ParentDashboard> {
     final childId = (child is Map) ? child['childId'] : null;
 
     return GestureDetector(
-      onTap: () {
-        if (childId != null) {
-          Get.to(() => ChildDetailsScreen(childId: childId));
-        }
+      onTap: () async {
+        if (childId == null) return;
+
+        final result = await Get.to(
+          () => ChildDetailsScreen(childId: childId),
+        );
+
+        await _refreshIfNeeded(result);
       },
       child: Container(
         width: 150,
@@ -338,13 +339,27 @@ class _ParentDashboardState extends State<ParentDashboard> {
             const Spacer(),
             GestureDetector(
               onTap: () {
+                print(
+                    "childId: $childId, unlockCount ${child['dailyUnlockCount']}, unlockDurationMinutes ${child['unlockDurationMinutes']}");
                 if (childId != null) {
+                  final dynamic dailyVal =
+                      (child is Map) ? child['dailyUnlockCount'] : null;
+                  final dynamic durationVal =
+                      (child is Map) ? child['unlockDurationMinutes'] : null;
+
+                  final int dailyUnlockCount = dailyVal is int
+                      ? dailyVal
+                      : int.tryParse(dailyVal?.toString() ?? '') ?? 3;
+                  final int unlockDurationMinutes = durationVal is int
+                      ? durationVal
+                      : int.tryParse(durationVal?.toString() ?? '') ?? 60;
+
                   Get.to(
                     () => ChildScreenTimeSettings(
-                      childId: childId,
-                      childName: name,
-                      dailyUnlockCount: child['dailyUnlockCount'],
-                      unlockDurationMinutes: child['unlockDurationMinutes'],
+                      childId: childId.toString(),
+                      childName: name.toString(),
+                      dailyUnlockCount: dailyUnlockCount,
+                      unlockDurationMinutes: unlockDurationMinutes,
                     ),
                   );
                 }
@@ -448,7 +463,7 @@ class _ParentDashboardState extends State<ParentDashboard> {
 
     return SliverAppBar(
       leadingWidth: 0,
-      leading: SizedBox.shrink(),
+      leading: const SizedBox.shrink(),
       shadowColor: Colors.black,
       centerTitle: true,
       elevation: 10,
@@ -458,111 +473,12 @@ class _ParentDashboardState extends State<ParentDashboard> {
       foregroundColor: Colors.white,
       title: Text(
         "Hello, $displayName",
-        style: TextStyle(
+        style: const TextStyle(
           wordSpacing: 1.6,
           letterSpacing: 1.1,
           fontWeight: FontWeight.w800,
           fontSize: 24,
           color: Colors.white,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildScreenTimeSummary() {
-    String displayMainValue = "2h 45m";
-    String subtitle = "Total Screen Time Today";
-    String? unlocksText;
-    String? remainingText;
-
-    if (dashboardData != null) {
-      final summary =
-          dashboardData!['screenTimeSummary'] as Map<String, dynamic>?;
-      if (summary != null) {
-        final usedToday = summary['usedToday']?.toString();
-        final totalUnlocks = summary['totalUnlocks']?.toString();
-        final remaining = summary['remaining']?.toString();
-
-        if (usedToday != null) {
-          displayMainValue =
-              "$usedToday ${usedToday == "1" ? "time" : "times"}";
-          subtitle = "Used Today";
-        }
-        if (totalUnlocks != null) unlocksText = "Unlocks: $totalUnlocks";
-        if (remaining != null) remainingText = "Remaining: $remaining";
-      }
-    }
-
-    return FadeIn(
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              radius: 30,
-              backgroundColor: AppColors.yellowPage,
-              child: Icon(Icons.timer, color: AppColors.primaryTeal),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: AppColors.gray700,
-                      fontSize: 12,
-                    ),
-                  ),
-                  Text(
-                    displayMainValue,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  if (unlocksText != null || remainingText != null) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        if (unlocksText != null)
-                          Text(
-                            unlocksText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.gray700,
-                            ),
-                          ),
-                        if (unlocksText != null && remainingText != null)
-                          const SizedBox(width: 10),
-                        if (remainingText != null)
-                          Text(
-                            remainingText,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.gray700,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ]
-                ],
-              ),
-            ),
-          ],
         ),
       ),
     );

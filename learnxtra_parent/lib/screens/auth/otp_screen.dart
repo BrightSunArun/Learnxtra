@@ -7,6 +7,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pinput/pinput.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
 import '../../services/api_service.dart';
 import '../profile_setup/parent_profile_setup_screen.dart';
@@ -81,6 +82,10 @@ class _OTPScreenState extends State<OTPScreen> {
           title: "Success",
           message: "Login successful!",
         );
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('parentMobileNumber', widget.mobileNumber);
+        print("Mobile number saved: ${widget.mobileNumber}");
 
         bool hasProfile = isNewUser == true ? false : true;
 

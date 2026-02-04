@@ -3,7 +3,7 @@
 import 'package:LearnXtraParent/controller/app_state.dart';
 import 'package:LearnXtraParent/screens/analytics/control_screen.dart';
 import 'package:LearnXtraParent/screens/auth/password_setup.dart';
-import 'package:LearnXtraParent/screens/profile_setup/parent_profile_setup_screen.dart';
+import 'package:LearnXtraParent/screens/dashboard/parent_details.dart';
 import 'package:LearnXtraParent/screens/safety/emergency_contacts_screen.dart';
 import 'package:LearnXtraParent/screens/safety/sos_center_screen.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
@@ -46,9 +46,7 @@ class SettingsScreen extends StatelessWidget {
               title: "Profile",
               subtitle: "Parent Name • Parent Account",
               onTap: () {
-                Get.to(() => ParentProfileSetupScreen(
-                      calledFrom: "settings",
-                    ));
+                Get.to(() => ParentProfileDetailsScreen());
               },
             ),
 

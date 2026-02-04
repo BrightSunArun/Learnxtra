@@ -16,14 +16,17 @@ class QuestionBankPage extends StatelessWidget {
               Expanded(
                 child: TextField(
                   decoration: InputDecoration(
-                    prefixIcon:
-                        const Icon(Icons.search, color: AppColors.primaryTeal),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.primaryTeal,
+                    ),
                     hintText: "Search questions by topic...",
                     filled: true,
                     fillColor: AppColors.white,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(15),
-                        borderSide: BorderSide.none),
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
               ),

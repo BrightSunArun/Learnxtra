@@ -1,5 +1,8 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:LearnXtraAdmin/admin/logo.dart';
 import 'package:LearnXtraAdmin/admin/superadmin.dart';
+import 'package:LearnXtraAdmin/services/api_services.dart';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
@@ -17,6 +20,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  final _apiService = ApiService();
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -25,24 +30,41 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   }
 
   Future<void> _handleLogin() async {
-    // if (!_formKey.currentState!.validate()) {
-    //   return;
-    // }
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-    // setState(() {
-    //   _isLoading = true;
-    // });
+    setState(() {
+      _isLoading = true;
+    });
 
-    // // Simulate API call
-    // await Future.delayed(const Duration(seconds: 2));
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      Navigator.push(
+    final response = await _apiService.adminLogin(
+      email: email,
+      password: password,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (response != null) {
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const SuperAdminApp()),
+      );
+    } else {
+      // Login failed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invalid credentials. Please try again.'),
+          backgroundColor: Colors.redAccent,
+          duration: Duration(seconds: 4),
+        ),
       );
     }
   }
@@ -81,7 +103,6 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Logo
                         Center(
                           child: Column(
                             children: [
@@ -160,8 +181,8 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
                             }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
+                            if (value.length < 4) {
+                              return 'Password must be at least 4 characters';
                             }
                             return null;
                           },
@@ -171,7 +192,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                           alignment: Alignment.centerRight,
                           child: TextButton(
                             onPressed: () {
-                              // Handle forgot password
+                              // TODO: Implement forgot password
                             },
                             child: const Text('Forgot Password?'),
                           ),
@@ -189,7 +210,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppColors.white,
+                                      Colors.white,
                                     ),
                                   ),
                                 )
@@ -230,7 +251,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                         const SizedBox(height: 24),
                         OutlinedButton.icon(
                           onPressed: () {
-                            // Handle OTP login
+                            // TODO: Implement OTP login
                           },
                           icon: const Icon(Icons.message_outlined),
                           label: const Text('Sign in with OTP'),

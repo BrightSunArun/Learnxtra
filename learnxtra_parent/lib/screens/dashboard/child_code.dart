@@ -1,4 +1,4 @@
-import 'package:LearnXtraParent/screens/main_navigation.dart';
+import 'package:LearnXtraParent/screens/analytics/child_settings.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,10 +8,12 @@ import '../../services/api_service.dart';
 
 class ChildConnectionCodeScreen extends StatefulWidget {
   final String childId;
+  final String childName;
 
   const ChildConnectionCodeScreen({
     super.key,
     required this.childId,
+    required this.childName,
   });
 
   @override
@@ -244,7 +246,13 @@ class _ChildConnectionCodeScreenState extends State<ChildConnectionCodeScreen> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () async {
-              Get.offAll(() => const MainNavigation());
+              Get.offAll(
+                () => ChildScreenTimeSettings(
+                  calledFrom: "new",
+                  childId: widget.childId,
+                  childName: widget.childName,
+                ),
+              );
             },
             child: const Text(
               "Done",

@@ -300,15 +300,49 @@ class ApiService extends GetxService {
     Map<String, String>? headers,
     dynamic body,
     Map<String, String>? queryParameters,
+    bool requireAuth = true,
   }) async {
-    return _performRequest(
-      'PUT',
-      path,
-      headers: headers,
-      body: body,
-      queryParameters: queryParameters,
-      requireAuth: true,
-    );
+    print('→ PUT request starting: $path');
+    print('  • requireAuth   : $requireAuth');
+    print('  • query params  : ${queryParameters ?? "<none>"}');
+    print('  • has body      : ${body != null}');
+    if (body != null) {
+      // Be careful — don't print huge bodies or sensitive data in production!
+      print('  • body type     : ${body.runtimeType}');
+      // Uncomment only when needed and safe:
+      // print('  • body preview  : ${body.toString().substring(0, body.toString().length.clamp(0, 500))}');
+    }
+    print('  • custom headers: ${headers?.keys.toList() ?? "<none>"}');
+
+    try {
+      print('  → Calling _performRequest...');
+
+      final result = await _performRequest(
+        'PUT',
+        path,
+        headers: headers,
+        body: body,
+        queryParameters: queryParameters,
+        requireAuth: requireAuth,
+      );
+
+      print('  ✓ PUT request completed successfully for: $path');
+      // print('  • Response type : ${result.runtimeType}'); // uncomment if needed
+
+      return result;
+    } catch (e, stackTrace) {
+      print('  ✗ PUT request FAILED for: $path');
+      print('  • Error type    : ${e.runtimeType}');
+      print('  • Error message : $e');
+      print('  • Stack trace   :');
+      print(
+          '    ${stackTrace.toString().split('\n').take(8).join('\n    ')}'); // first 8 lines
+
+      // You can also log to your error tracking service here if you have one
+      // await Sentry.captureException(e, stackTrace: stackTrace); // example
+
+      rethrow; // ← important: keep throwing so caller can handle it
+    }
   }
 
   Future<Map<String, dynamic>> updateEmergencyContact({
@@ -460,6 +494,7 @@ class ApiService extends GetxService {
     final response = await _put(
       path,
       body: body,
+      requireAuth: true,
     );
 
     if (response is Map<String, dynamic>) {
@@ -777,5 +812,160 @@ class ApiService extends GetxService {
       message: 'Unexpected response format from get child details',
       statusCode: 500,
     );
+  }
+
+  Future<Map<String, dynamic>> deleteChild(String childId) async {
+    final path = '${ApiEndpoints.child}/$childId';
+
+    final response = await _performRequest(
+      'DELETE',
+      path,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format from delete child',
+      statusCode: 500,
+    );
+  }
+
+  Future<Map<String, dynamic>> createChildScreenTime({
+    required String childId,
+    required int dailyUnlockCount,
+    required int unlockDurationMinutes,
+    required String startTime,
+    required String endTime,
+  }) async {
+    final body = {
+      "childId": childId,
+      "dailyUnlockCount": dailyUnlockCount,
+      "unlockDurationMinutes": unlockDurationMinutes,
+      "start_time": startTime,
+      "end_time": endTime,
+    };
+
+    print("\n\ncreateChildScreenTime called - childId: $childId, "
+        "daily: $dailyUnlockCount, duration: $unlockDurationMinutes mins\n\n");
+
+    final response = await post(
+      'child/screen-time',
+      body: body,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format when creating screen-time session',
+      statusCode: 500,
+    );
+  }
+
+  Future<Map<String, dynamic>> getChildScreenTime(String childId) async {
+    final path = 'child/$childId/screen-time';
+
+    print(
+        "\n\ngetChildScreenTime called for childId: $childId on ApiService ${this.hashCode}\n\n");
+
+    final response = await get(
+      path,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    if (response is Map<String, dynamic> &&
+        response['data'] is Map<String, dynamic>) {
+      return response['data'] as Map<String, dynamic>;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format from get child screen-time',
+      statusCode: 500,
+    );
+  }
+
+  Future<Map<String, dynamic>> updateChildScreenTime({
+    required String childId,
+    required int defaultDailyUnlocks,
+    required int defaultUnlockDuration,
+    required String startTime,
+    required String endTime,
+  }) async {
+    final body = <String, dynamic>{};
+
+    body["defaultDailyUnlocks"] = defaultDailyUnlocks;
+    body["defaultUnlockDuration"] = defaultUnlockDuration;
+    if (startTime.trim().isNotEmpty) {
+      body["start_time"] = startTime.trim();
+    }
+    if (endTime.trim().isNotEmpty) {
+      body["end_time"] = endTime.trim();
+    }
+
+    if (body.isEmpty) {
+      throw ApiException(
+        message: 'No fields provided to update screen-time settings',
+        statusCode: 400,
+      );
+    }
+
+    final path = '$childId/screen-time';
+
+    print('┌───────────────────────────────────────────────');
+    print('│ updateChildScreenTime for child: $childId');
+    print('│ Fields to update : ${body.keys.join(', ')}');
+    print('│ Payload preview  : ${jsonEncode(body)}');
+    print('└───────────────────────────────────────────────');
+
+    // Force correct headers — this fixes most Postman-vs-Flutter mismatches
+    final customHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    try {
+      final response = await _put(
+        path,
+        body: body,
+        headers: customHeaders, // ← crucial line
+        requireAuth: true,
+      );
+
+      print('┌───────────────────────────────────────────────');
+      print('│ updateChildScreenTime SUCCESS');
+      print('│ Raw response type: ${response.runtimeType}');
+      print('└───────────────────────────────────────────────');
+
+      if (response is Map<String, dynamic>) {
+        return response;
+      }
+
+      if (response is Map<String, dynamic> &&
+          response['data'] is Map<String, dynamic>) {
+        return response['data'] as Map<String, dynamic>;
+      }
+
+      throw ApiException(
+        message: 'Unexpected response format from update screen-time',
+        statusCode: 500,
+      );
+    } catch (e, stack) {
+      print('┌───────────────────────────────────────────────');
+      print('│ updateChildScreenTime FAILED');
+      print('│ Error          : $e');
+      print('│ Stack (first 5):');
+      print('│   ${stack.toString().split("\n").take(5).join("\n│   ")}');
+      print('└───────────────────────────────────────────────');
+      rethrow;
+    }
   }
 }

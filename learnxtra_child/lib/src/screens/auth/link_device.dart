@@ -61,6 +61,7 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('childId', response['child']['id']);
+        await prefs.setString('parentId', response['parent']['id']);
 
         Fluttertoast.showToast(
           msg: "Device linked successfully!",

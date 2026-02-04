@@ -193,7 +193,7 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
         message: 'Profile updated successfully!',
       );
 
-      Get.back();
+      Navigator.pop(context, true);
 
       await LocalStorage.saveParentProfile(
         fullName: fullName,
