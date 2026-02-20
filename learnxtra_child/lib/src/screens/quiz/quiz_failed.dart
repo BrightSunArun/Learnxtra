@@ -1,51 +1,51 @@
+import 'package:LearnXtraChild/src/screens/quiz/quiz_results_screen.dart';
+import 'package:LearnXtraChild/src/utils/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
-import 'package:LearnXtraChild/src/routes/app_routes.dart';
 
 class QuizFailedScreen extends StatelessWidget {
-  // Accept optional constructor parameters, but prefer Get.arguments.
   final int? correct;
   final int? total;
   final List<Map<String, dynamic>>? quizSummary;
-  final String? sessionId;
 
   const QuizFailedScreen({
     super.key,
     this.correct,
     this.total,
     this.quizSummary,
-    this.sessionId,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Try to get values from Get.arguments (Map) if provided.
-    final args = Get.arguments;
-    final int finalCorrect = correct ??
-        (args is Map && args['isCorrect'] is int ? args['correct'] as int : 0);
-    final int finalTotal = total ??
-        (args is Map && args['total'] is int ? args['total'] as int : 0);
-    final List<Map<String, dynamic>> finalSummary = quizSummary ??
-        (args is Map && args['summary'] is List
-            ? List<Map<String, dynamic>>.from(args['summary'])
-            : (args is List ? List<Map<String, dynamic>>.from(args) : []));
+    final int finalCorrect = correct ?? 0;
+    final int finalTotal = total ?? 0;
+    final List<Map<String, dynamic>> finalSummary = quizSummary ?? [];
 
     final requiredToPass = (finalTotal * 0.7).ceil();
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.red.shade700,
-            Colors.red.shade500,
-            Colors.red.shade400,
-          ],
+    return Scaffold(
+      backgroundColor: AppColors.backgroundCream,
+      appBar: AppBar(
+        toolbarHeight: 80,
+        backgroundColor: AppColors.primaryTeal,
+        title: const Text(
+          'LearnXtra',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            height: 1.2,
+            fontStyle: FontStyle.italic,
+          ),
         ),
+        centerTitle: true,
+        elevation: 10,
+        surfaceTintColor: AppColors.primaryTeal,
+        shadowColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        scrolledUnderElevation: 16,
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
@@ -82,12 +82,12 @@ class QuizFailedScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 40,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppColors.primaryTeal,
                       fontStyle: FontStyle.italic,
                       letterSpacing: 1.2,
                       shadows: [
                         Shadow(
-                          color: Colors.black.withOpacity(0.6),
+                          color: Colors.black.withOpacity(0.2),
                           offset: const Offset(2, 4),
                           blurRadius: 10,
                         ),
@@ -103,10 +103,10 @@ class QuizFailedScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         vertical: 24, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: AppColors.primaryTeal.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
+                        color: AppColors.primaryTeal.withOpacity(0.3),
                         width: 1.5,
                       ),
                     ),
@@ -117,7 +117,7 @@ class QuizFailedScreen extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: AppColors.primaryTeal,
                           ),
                         ),
                         const Text(
@@ -125,12 +125,12 @@ class QuizFailedScreen extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white70,
+                            color: AppColors.primaryTeal,
                             letterSpacing: 2,
                           ),
                         ),
                         const Divider(
-                          color: Colors.white24,
+                          color: AppColors.primaryTeal,
                           height: 32,
                           indent: 40,
                           endIndent: 40,
@@ -142,7 +142,7 @@ class QuizFailedScreen extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 18,
-                            color: Colors.white,
+                            color: AppColors.primaryTeal,
                             fontWeight: FontWeight.w400,
                           ),
                         ),
@@ -159,7 +159,7 @@ class QuizFailedScreen extends StatelessWidget {
                     child: ElevatedButton.icon(
                       icon: const Icon(
                         Icons.analytics_outlined,
-                        color: Color(0xFFD32F2F),
+                        color: Colors.white,
                         size: 32,
                       ),
                       label: const Text(
@@ -169,23 +169,15 @@ class QuizFailedScreen extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFFD32F2F),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
                       onPressed: () {
-                        // Pass summary to results screen. Keep API-compatible shape.
-                        Get.offAllNamed(
-                          AppRoutes.quizResults,
-                          arguments: {
-                            'summary': finalSummary,
-                            'total': finalTotal,
-                            'calledFrom': 'fail',
-                          },
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute(
+                            builder: (context) => QuizResultsScreen(
+                              quizSummary: finalSummary,
+                              total: finalTotal,
+                              calledFrom: "quiz_failed",
+                            ),
+                          ),
                         );
                       },
                     ),

@@ -99,11 +99,6 @@ class _SOSCenterScreenState extends State<SOSCenterScreen> {
     }
   }
 
-  String _getChildDisplay(String? childId) {
-    if (childId == null || childId.isEmpty) return 'Unknown Child';
-    return 'Child ${childId.substring(0, 8).toUpperCase()}';
-  }
-
   String _formatTimeAgoIST(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return 'just now';
 
@@ -130,7 +125,7 @@ class _SOSCenterScreenState extends State<SOSCenterScreen> {
   }
 
   Widget _buildRequestCard(Map<String, dynamic> req, {bool isPending = true}) {
-    final childDisplay = _getChildDisplay(req['child_id']?.toString());
+    final childDisplay = req['child']['name'].toString();
     final createdAt = req['created_at']?.toString() ?? '';
     final approvedAt = req['approved_at']?.toString() ?? createdAt;
     final requestId = req['id']?.toString() ?? '';

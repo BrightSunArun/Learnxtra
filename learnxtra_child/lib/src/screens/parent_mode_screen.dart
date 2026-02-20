@@ -1,14 +1,19 @@
+// ignore_for_file: use_build_context_synchronously, avoid_print
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:LearnXtraChild/src/controller/app_controller.dart';
 import 'package:LearnXtraChild/src/utils/app_colors.dart';
+import 'package:LearnXtraChild/src/services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ParentModeScreen extends StatelessWidget {
   const ParentModeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<AppStateController>();
+    final appController = Get.find<AppStateController>();
+    final apiService = Get.find<ApiService>();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -32,7 +37,7 @@ class ParentModeScreen extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Obx(() {
-        final isParent = controller.isParentMode.value;
+        final isParent = appController.isParentMode.value;
 
         return ListView(
           padding: const EdgeInsets.only(
@@ -86,18 +91,15 @@ class ParentModeScreen extends StatelessWidget {
             SwitchListTile(
               value: isParent,
               onChanged: (bool value) async {
-                // Trying to ENABLE parent mode → ask for password
                 if (value == true && !isParent) {
-                  final success = await _showPasswordDialog(context);
-                  if (success) {
-                    controller
-                        .toggleParentMode(); // only toggle if password correct
-                  }
-                  // else: do nothing → switch stays OFF
-                }
-                // Trying to DISABLE parent mode → no password needed
-                else {
-                  controller.toggleParentMode();
+                  final success = await _showPinDialog(
+                    context,
+                    apiService: apiService,
+                    appController: appController,
+                  );
+                  print(" \n\n The success is : $success");
+                } else {
+                  appController.toggleParentMode();
                 }
               },
               title: const Text(
@@ -129,78 +131,136 @@ class ParentModeScreen extends StatelessWidget {
     );
   }
 
-  // ────────────────────────────────────────────────
-  // Password Dialog
-  // ────────────────────────────────────────────────
-  Future<bool> _showPasswordDialog(BuildContext context) async {
-    final TextEditingController passwordController = TextEditingController();
+  Future<bool> _showPinDialog(
+    BuildContext context, {
+    required ApiService apiService,
+    required AppStateController appController,
+  }) async {
+    final TextEditingController pinController = TextEditingController();
     String? errorMessage;
+    bool isLoading = false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final childId = prefs.getString('childId');
+
+    if (childId == null || childId.isEmpty) {
+      Get.snackbar('Error', 'No child selected. Please try again.');
+      return false;
+    }
 
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (context) {
             return StatefulBuilder(
-              builder: (context, setStateDialog) {
-                return AlertDialog(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Row(
-                    children: [
-                      Icon(Icons.security, color: Colors.red),
-                      SizedBox(width: 12),
-                      Text('Parent Mode Password'),
-                    ],
-                  ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: 'Enter password',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+              builder: (context, setDialogState) {
+                return SizedBox(
+                  height: 200,
+                  width: double.infinity,
+                  child: AlertDialog(
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.security,
+                              color: Colors.black,
+                            ),
+                            SizedBox(
+                              width: 8,
+                            ),
+                            Text('Parent Mode PIN'),
+                          ],
+                        ),
+                        SizedBox(width: 60),
+                      ],
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: pinController,
+                          obscureText: true,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          decoration: InputDecoration(
+                            labelText: 'Enter PIN',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: const Icon(Icons.lock),
+                            errorText: errorMessage,
+                            counterText: "",
                           ),
-                          prefixIcon: const Icon(Icons.lock),
-                          errorText: errorMessage,
+                          autofocus: true,
+                          enabled: !isLoading,
+                          onSubmitted: (_) => _validateAndUnlock(
+                            pinController,
+                            setDialogState,
+                            context,
+                            apiService,
+                            appController,
+                            childId,
+                            (loading) =>
+                                setDialogState(() => isLoading = loading),
+                            (msg) => setDialogState(() => errorMessage = msg),
+                          ),
                         ),
-                        autofocus: true,
-                        onSubmitted: (_) => _validateAndClose(
-                          passwordController,
-                          setStateDialog,
-                          context,
-                        ),
+                        const SizedBox(height: 12),
+                        if (isLoading)
+                          const CircularProgressIndicator()
+                        else
+                          const Text(
+                            'This PIN protects parent controls',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: isLoading
+                            ? null
+                            : () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'This password protects parent controls',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: isLoading
+                            ? null
+                            : () => _validateAndUnlock(
+                                  pinController,
+                                  setDialogState,
+                                  context,
+                                  apiService,
+                                  appController,
+                                  childId,
+                                  (loading) =>
+                                      setDialogState(() => isLoading = loading),
+                                  (msg) =>
+                                      setDialogState(() => errorMessage = msg),
+                                ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text('Confirm'),
                       ),
                     ],
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: Colors.red.shade700,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () => _validateAndClose(
-                        passwordController,
-                        setStateDialog,
-                        context,
-                      ),
-                      child: const Text('Confirm'),
-                    ),
-                  ],
                 );
               },
             );
@@ -209,35 +269,48 @@ class ParentModeScreen extends StatelessWidget {
         false;
   }
 
-  Future<void> _validateAndClose(
+  Future<void> _validateAndUnlock(
     TextEditingController controller,
-    StateSetter setStateDialog,
+    StateSetter setDialogState,
     BuildContext context,
+    ApiService apiService,
+    AppStateController appController,
+    String childId,
+    void Function(bool) setLoading,
+    void Function(String?) setError,
   ) async {
-    final password = controller.text.trim();
+    final pin = controller.text.trim();
 
-    if (password.isEmpty) {
-      setStateDialog(() {
-        controller.text.isEmpty ? 'Please enter password' : null;
-      });
+    if (pin.isEmpty) {
+      setError('Please enter the PIN');
       return;
     }
 
-    bool isCorrect = await _verifyParentPassword(password);
+    setError(null);
+    setLoading(true);
 
-    if (isCorrect) {
-      Navigator.pop(context, true);
-    } else {
-      setStateDialog(() {
-        'Incorrect password' as String?;
-      });
+    try {
+      final response = await apiService.unlockParentMode(
+        childId: childId,
+        pinCode: pin,
+      );
+
+      if (response['success'] == true && response['unlocked'] == true) {
+        appController.toggleParentMode();
+        Navigator.pop(context, true);
+      } else {
+        String msg = response['message'] ?? 'Failed to unlock parent mode';
+
+        if (msg == 'INVALID_PIN') {
+          msg = 'Incorrect PIN. Please try again.';
+        }
+
+        setError(msg);
+      }
+    } catch (e) {
+      setError('Could not unlock parent mode. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  }
-
-  Future<bool> _verifyParentPassword(String password) async {
-    await Future.delayed(const Duration(milliseconds: 800));
-    const validPasswords = ['parent123', 'learnxtra2025', 'mychild2026'];
-
-    return validPasswords.contains(password);
   }
 }

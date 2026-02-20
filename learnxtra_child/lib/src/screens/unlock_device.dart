@@ -3,8 +3,23 @@ import 'package:get/get.dart';
 import 'package:LearnXtraChild/src/controller/app_controller.dart';
 import 'package:LearnXtraChild/src/utils/app_colors.dart';
 
-class UnlockDevice extends StatelessWidget {
+class UnlockDevice extends StatefulWidget {
   const UnlockDevice({super.key});
+
+  @override
+  State<UnlockDevice> createState() => _UnlockDeviceState();
+}
+
+class _UnlockDeviceState extends State<UnlockDevice> {
+  // @override
+  // void initState() {
+  //   disableKioskMode();
+  //   super.initState();
+  // }
+
+  // void disableKioskMode() async {
+  //   await KioskService.disableKiosk();
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +71,7 @@ class UnlockDevice extends StatelessWidget {
                 ),
               ),
               child: const Text(
-                "Lock Again",
+                "Lock Again (only for testing)",
                 style: TextStyle(fontSize: 18),
               ),
             ),

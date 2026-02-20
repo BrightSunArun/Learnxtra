@@ -1,10 +1,12 @@
-// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use, avoid_print
 
+import 'package:LearnXtraParent/screens/dashboard/child_code.dart';
 import 'package:LearnXtraParent/screens/main_navigation.dart';
 import 'package:LearnXtraParent/services/api_service.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
 
 class ChildScreenTimeSettings extends StatefulWidget {
@@ -37,6 +39,22 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
   bool _isLoading = true;
   bool _isSaving = false;
 
+  // Flags to know whether values were provided by API
+  bool _hasApiDailyUnlock = false;
+  bool _hasApiUnlockDuration = false;
+  bool _hasApiStartTime = false;
+  bool _hasApiEndTime = false;
+
+  // Flags to know whether user modified the values locally
+  bool _dailyUnlockModified = false;
+  bool _durationModified = false;
+  bool _startTimeModified = false;
+  bool _endTimeModified = false;
+
+// === Add this new state field near other state flags ===
+  bool _settingsSavedSuccessfully =
+      false; // becomes true after a successful save/create
+
   final ApiService _apiService = Get.find<ApiService>();
 
   @override
@@ -51,24 +69,121 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
     try {
       final data = await _apiService.getChildScreenTime(widget.childId);
 
+      // Reset flags before parsing
+      _hasApiDailyUnlock = false;
+      _hasApiUnlockDuration = false;
+      _hasApiStartTime = false;
+      _hasApiEndTime = false;
+
+      // Parse remainingUnlocks
+      try {
+        final dynamic ru = data['remainingUnlocks'];
+        if (ru != null) {
+          final parsed = _parseIntNullable(ru);
+          if (parsed != null) {
+            _dailyUnlockCount = parsed;
+            _hasApiDailyUnlock = true;
+          } else {
+            // ru exists but cannot be parsed -> treat as missing
+            print(
+                "[DEBUG] getChildScreenTime: 'remainingUnlocks' present but unparsable: $ru");
+          }
+        } else {
+          print("[DEBUG] getChildScreenTime: 'remainingUnlocks' is null");
+        }
+      } catch (e) {
+        print("[DEBUG] Error parsing 'remainingUnlocks': $e");
+      }
+
+      // Parse unlockDurationMinutes
+      try {
+        final dynamic ud = data['unlockDurationMinutes'];
+        if (ud != null) {
+          final parsed = _parseIntNullable(ud);
+          if (parsed != null) {
+            _unlockDurationMinutes = parsed;
+            _hasApiUnlockDuration = true;
+          } else {
+            print(
+                "[DEBUG] getChildScreenTime: 'unlockDurationMinutes' present but unparsable: $ud");
+          }
+        } else {
+          print("[DEBUG] getChildScreenTime: 'unlockDurationMinutes' is null");
+        }
+      } catch (e) {
+        print("[DEBUG] Error parsing 'unlockDurationMinutes': $e");
+      }
+
+      // Parse startTime
+      try {
+        final dynamic st = data['startTime'];
+        final parsedSt = _parseTimeOfDayNullable(st);
+        if (parsedSt != null) {
+          _startTime = parsedSt;
+          _hasApiStartTime = true;
+        } else {
+          print(
+              "[DEBUG] getChildScreenTime: 'startTime' is null/unparsable: $st");
+        }
+      } catch (e) {
+        print("[DEBUG] Error parsing 'startTime': $e");
+      }
+
+      // Parse endTime
+      try {
+        final dynamic et = data['endTime'];
+        final parsedEt = _parseTimeOfDayNullable(et);
+        if (parsedEt != null) {
+          _endTime = parsedEt;
+          _hasApiEndTime = true;
+        } else {
+          print(
+              "[DEBUG] getChildScreenTime: 'endTime' is null/unparsable: $et");
+        }
+      } catch (e) {
+        print("[DEBUG] Error parsing 'endTime': $e");
+      }
+
+      // When we successfully got some values from API, user hasn't modified them yet
+      _dailyUnlockModified = false;
+      _durationModified = false;
+      _startTimeModified = false;
+      _endTimeModified = false;
+
       if (mounted) {
         setState(() {
-          _dailyUnlockCount = _parseIntSafe(data['remainingUnlocks'],
-              fallback: _dailyUnlockCount);
-          _unlockDurationMinutes = _parseIntSafe(data['unlockDurationMinutes'],
-              fallback: _unlockDurationMinutes);
-          _startTime = _parseTimeOfDay(data['startTime']);
-          _endTime = _parseTimeOfDay(data['endTime']);
           _isLoading = false;
         });
       }
+
+      print(
+          "[DEBUG] getChildScreenTime completed. hasApiDaily: $_hasApiDailyUnlock, hasApiDuration: $_hasApiUnlockDuration, hasApiStart: $_hasApiStartTime, hasApiEnd: $_hasApiEndTime");
     } catch (e) {
+      // API threw - likely because backend returned nulls in unexpected way
       print("Failed to load screen time settings: $e");
+      // Keep defaults and flags false so UI will require user input
+      _hasApiDailyUnlock = false;
+      _hasApiUnlockDuration = false;
+      _hasApiStartTime = false;
+      _hasApiEndTime = false;
+
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  TimeOfDay? _parseTimeOfDay(dynamic value) {
+  // Parses integers but returns null if unparsable
+  int? _parseIntNullable(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      return int.tryParse(trimmed);
+    }
+    return null;
+  }
+
+  TimeOfDay? _parseTimeOfDayNullable(dynamic value) {
     if (value == null || value is! String || value.isEmpty) return null;
     try {
       final parts = value.split(':');
@@ -90,13 +205,6 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
   String _formatEndTimeOfDay24h(TimeOfDay? time) {
     final effectiveTime = time ?? const TimeOfDay(hour: 0, minute: 0);
     return '${effectiveTime.hour.toString().padLeft(2, '0')}:${effectiveTime.minute.toString().padLeft(2, '0')}';
-  }
-
-  int _parseIntSafe(dynamic value, {required int fallback}) {
-    if (value == null) return fallback;
-    if (value is int) return value;
-    if (value is String) return int.tryParse(value) ?? fallback;
-    return fallback;
   }
 
   bool _isNoChangeError(dynamic e) {
@@ -127,6 +235,26 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
         title: "Success",
         message: "Settings saved for ${widget.childName}!",
       );
+
+      _hasApiDailyUnlock = true;
+      _hasApiUnlockDuration = true;
+      _hasApiStartTime = _startTime != null;
+      _hasApiEndTime = _endTime != null;
+      _dailyUnlockModified = false;
+      _durationModified = false;
+      _startTimeModified = false;
+      _endTimeModified = false;
+
+      setState(() {
+        _settingsSavedSuccessfully = true;
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      prefs.setBool("isScreenTimeSaved", true);
+      prefs.setString("childId", widget.childId);
+      prefs.setString("childName", widget.childName);
+
+      print("[DEBUG] postSettings: settingsSavedSuccessfully set to true");
     } catch (e) {
       print("Create error: $e");
       String msg = "Failed to create settings";
@@ -155,6 +283,20 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
         title: "Success",
         message: "Settings saved for ${widget.childName}!",
       );
+
+      _hasApiDailyUnlock = true;
+      _hasApiUnlockDuration = true;
+      _hasApiStartTime = _startTime != null;
+      _hasApiEndTime = _endTime != null;
+      _dailyUnlockModified = false;
+      _durationModified = false;
+      _startTimeModified = false;
+      _endTimeModified = false;
+
+      setState(() {
+        _settingsSavedSuccessfully = true;
+      });
+      print("[DEBUG] _saveSettings: settingsSavedSuccessfully set to true");
     } catch (e) {
       print("Update error: $e");
 
@@ -190,8 +332,14 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
       setState(() {
         if (isStart) {
           _startTime = picked;
+          _startTimeModified = true;
+          print(
+              "[DEBUG] User selected startTime: ${_formatTimeOfDay24h(picked)}");
         } else {
           _endTime = picked;
+          _endTimeModified = true;
+          print(
+              "[DEBUG] User selected endTime: ${_formatTimeOfDay24h(picked)}");
         }
       });
     }
@@ -214,6 +362,18 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
     }
 
     return '$hour:$minuteStr $period';
+  }
+
+  bool get _canProceed {
+    final dailyValid = _hasApiDailyUnlock || _dailyUnlockModified;
+    final durationValid = _hasApiUnlockDuration || _durationModified;
+    final startValid = _hasApiStartTime || _startTimeModified;
+    final endValid = _hasApiEndTime || _endTimeModified;
+
+    final all = dailyValid && durationValid && startValid && endValid;
+    print(
+        "[DEBUG] _canProceed check -> dailyValid:$dailyValid durationValid:$durationValid startValid:$startValid endValid:$endValid => all:$all");
+    return all;
   }
 
   @override
@@ -261,7 +421,13 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
                       minValue: 1,
                       maxValue: 8,
                       unit: "",
-                      onChanged: (v) => setState(() => _dailyUnlockCount = v),
+                      onChanged: (v) {
+                        setState(() {
+                          _dailyUnlockCount = v;
+                          _dailyUnlockModified = true;
+                          print("[DEBUG] User changed dailyUnlockCount to $v");
+                        });
+                      },
                     ),
                     const SizedBox(height: 12),
                     _buildSettingCard(
@@ -272,8 +438,14 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
                       maxValue: 180,
                       step: 5,
                       unit: "min",
-                      onChanged: (v) =>
-                          setState(() => _unlockDurationMinutes = v),
+                      onChanged: (v) {
+                        setState(() {
+                          _unlockDurationMinutes = v;
+                          _durationModified = true;
+                          print(
+                              "[DEBUG] User changed unlockDurationMinutes to $v");
+                        });
+                      },
                     ),
                     const SizedBox(height: 12),
                     _buildTimeCard(
@@ -296,9 +468,9 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
                       width: double.infinity,
                       height: 46,
                       child: ElevatedButton(
-                        onPressed: _isSaving
+                        onPressed: (_isSaving || !_canProceed)
                             ? null
-                            : widget.calledFrom == "new"
+                            : widget.calledFrom == "add_child"
                                 ? postSettings
                                 : _saveSettings,
                         style:
@@ -321,6 +493,17 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
                               ),
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    // Provide hint to the user when button is disabled due to missing inputs
+                    if (!_isLoading && !_canProceed)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          "Please fill all fields before continuing.",
+                          style:
+                              TextStyle(color: Colors.red[700], fontSize: 13),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -328,10 +511,50 @@ class _ChildScreenTimeSettingsState extends State<ChildScreenTimeSettings> {
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: ElevatedButton(
-          onPressed:
-              _isSaving ? null : () => Get.offAll(() => const MainNavigation()),
-          child: const Text("Done",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          onPressed: (!_isSaving &&
+                  (widget.calledFrom == "add_child"
+                      ? _settingsSavedSuccessfully
+                      : _canProceed))
+              ? () {
+                  if (widget.calledFrom == "add_child") {
+                    print(
+                        "[DEBUG] Navigating to ChildConnectionCodeScreen (after save)");
+                    Get.offAll(
+                      () => ChildConnectionCodeScreen(
+                        childId: widget.childId,
+                        childName: widget.childName,
+                      ),
+                    );
+                  } else {
+                    print("[DEBUG] Navigating to MainNavigation");
+                    Get.offAll(
+                      () => const MainNavigation(),
+                    );
+                  }
+                }
+              : null,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                widget.calledFrom == "add_child" ? "Generate Code" : "Done",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              widget.calledFrom == "add_child"
+                  ? SizedBox(width: 10)
+                  : SizedBox.shrink(),
+              widget.calledFrom == "add_child"
+                  ? Icon(
+                      Icons.arrow_forward_ios,
+                      size: 20,
+                      color: AppColors.white,
+                    )
+                  : SizedBox.shrink(),
+            ],
+          ),
         ),
       ),
     );

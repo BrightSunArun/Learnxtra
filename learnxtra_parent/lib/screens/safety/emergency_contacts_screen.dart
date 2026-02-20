@@ -2,6 +2,7 @@
 
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../constants/app_colors.dart';
 import '../../services/api_service.dart';
@@ -109,12 +110,22 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               children: [
                 _buildTextField(
                   controller: nameController,
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                    LengthLimitingTextInputFormatter(50),
+                  ],
                   label: "Full Name",
                   hint: "e.g. Anita Sharma",
                   icon: Icons.person,
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                    LengthLimitingTextInputFormatter(50),
+                  ],
                   controller: relationController,
                   label: "Relation",
                   hint: "e.g. Mother, Uncle, Guardian",
@@ -122,6 +133,11 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
+                  textCapitalization: TextCapitalization.none,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   controller: phoneController,
                   label: "Phone Number",
                   hint: "e.g. 9123456789",
@@ -265,12 +281,22 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
               children: [
                 _buildTextField(
                   controller: nameController,
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                    LengthLimitingTextInputFormatter(50),
+                  ],
                   label: "Full Name",
                   hint: "e.g. Anita Sharma",
                   icon: Icons.person,
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
+                  textCapitalization: TextCapitalization.words,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                    LengthLimitingTextInputFormatter(50),
+                  ],
                   controller: relationController,
                   label: "Relation",
                   hint: "e.g. Mother, Uncle, Guardian",
@@ -278,6 +304,11 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
+                  textCapitalization: TextCapitalization.none,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   controller: phoneController,
                   label: "Phone Number",
                   hint: "e.g. 9123456789",
@@ -464,9 +495,13 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
     required String hint,
     required IconData icon,
     TextInputType? keyboardType,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    List<TextInputFormatter> inputFormatters = const [],
   }) {
     return TextField(
       controller: controller,
+      textCapitalization: textCapitalization,
+      inputFormatters: inputFormatters,
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,

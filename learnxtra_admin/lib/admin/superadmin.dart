@@ -4,7 +4,7 @@ import 'package:LearnXtraAdmin/admin/admin_login_page.dart';
 import 'package:LearnXtraAdmin/admin/logo.dart';
 import 'package:LearnXtraAdmin/admin/logs_page.dart';
 import 'package:LearnXtraAdmin/admin/overview_page.dart';
-import 'package:LearnXtraAdmin/admin/platform_control.dart';
+import 'package:LearnXtraAdmin/admin/question_control.dart';
 import 'package:LearnXtraAdmin/admin/policy_page.dart';
 import 'package:LearnXtraAdmin/admin/questions_page.dart';
 import 'package:LearnXtraAdmin/constants/app_colors.dart';
@@ -43,11 +43,11 @@ class _MainDashboardState extends State<MainDashboard> {
 
   final List<Widget> _pages = [
     const OverviewPage(),
-    const PolicyPage(),
-    const QuestionBankPage(),
     const AccountsPage(),
     const LogsPage(),
-    const PlatformControlsPage(),
+    const QuestionBankPage(),
+    const QuestionsControlsPage(),
+    const PolicyPage(),
   ];
 
   @override
@@ -99,11 +99,11 @@ class _MainDashboardState extends State<MainDashboard> {
                   ),
                   const SizedBox(height: 20),
                   _navItem(0, "Dashboard", FontAwesomeIcons.house),
-                  _navItem(1, "Policy Settings", FontAwesomeIcons.shield),
-                  _navItem(2, "Question Bank", FontAwesomeIcons.bookOpen),
-                  _navItem(3, "User Accounts", FontAwesomeIcons.userGroup),
-                  _navItem(4, "Audit & Reports", FontAwesomeIcons.fileContract),
-                  _navItem(5, "Platform Controls", FontAwesomeIcons.gears),
+                  _navItem(1, "User Accounts", FontAwesomeIcons.userGroup),
+                  _navItem(2, "SOS & Reports", FontAwesomeIcons.fileContract),
+                  _navItem(3, "Question Bank", FontAwesomeIcons.bookOpen),
+                  _navItem(4, "Question Controls", FontAwesomeIcons.gears),
+                  _navItem(5, "Policy Settings", FontAwesomeIcons.shield),
                   const Spacer(),
                   const Divider(
                       color: Colors.white60, indent: 20, endIndent: 20),
@@ -152,12 +152,6 @@ class _MainDashboardState extends State<MainDashboard> {
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.notifications_none, color: AppColors.mutedTeal),
-              const SizedBox(width: 20),
-              const CircleAvatar(
-                backgroundColor: AppColors.cyanAccent,
-                child: Icon(Icons.person, color: Colors.white),
-              )
             ],
           ),
         ),

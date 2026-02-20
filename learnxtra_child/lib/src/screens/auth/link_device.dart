@@ -1,5 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -8,8 +10,7 @@ import 'package:LearnXtraChild/src/services/api_service.dart';
 import 'package:LearnXtraChild/src/utils/api_exception.dart';
 import 'package:LearnXtraChild/src/utils/app_colors.dart';
 import 'package:LearnXtraChild/src/screens/auth/bottom_navigation_bar.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // PersistentNavBar
-// removed AppRoutes import - we now directly navigate to PersistentNavBar
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LinkDeviceScreen extends StatefulWidget {
   const LinkDeviceScreen({super.key});
@@ -32,6 +33,16 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
     super.dispose();
   }
 
+  Future<void> saveProfileData(Map<String, dynamic> response) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final parent = response['parent'] as Map<String, dynamic>;
+    final child = response['child'] as Map<String, dynamic>;
+
+    await prefs.setString('parent_data', jsonEncode(parent));
+    await prefs.setString('child_data', jsonEncode(child));
+  }
+
   Future<void> _handleLink() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -40,8 +51,6 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // final deviceUuid = await getDeviceIdentifier();
-
       final response = await _apiService.linkChildDevice(
         childLinkCode: code,
         deviceUuid: "123",
@@ -63,6 +72,8 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
         await prefs.setString('childId', response['child']['id']);
         await prefs.setString('parentId', response['parent']['id']);
 
+        saveProfileData(response);
+
         Fluttertoast.showToast(
           msg: "Device linked successfully!",
           toastLength: Toast.LENGTH_SHORT,
@@ -70,9 +81,6 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
           backgroundColor: Colors.green,
           textColor: Colors.white,
         );
-
-        // Navigate to the bottom navigation (PersistentNavBar)
-        // Use offAll to clear previous routes (splash, link)
         Get.offAll(() => const PersistentNavBar());
       } else {
         Fluttertoast.showToast(
@@ -147,15 +155,9 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const Spacer(flex: 2),
-                const Icon(
-                  Icons.qr_code_2_rounded,
-                  size: 120,
-                  color: AppColors.primaryTeal,
-                ),
-                const SizedBox(height: 32),
                 const Text(
                   "Connect with Parent",
                   textAlign: TextAlign.center,
@@ -165,12 +167,12 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+              Text(
                   "Enter the code from parent app\nor scan QR code",
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
-                    color: AppColors.mutedTeal,
+                    color: AppColors.gray600,
                   ),
                 ),
                 const SizedBox(height: 48),
@@ -227,12 +229,6 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
                 const SizedBox(height: 40),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _handleLink,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: _isLoading
-                        ? AppColors.primaryTeal.withOpacity(0.6)
-                        : null,
-                  ),
                   child: _isLoading
                       ? const SizedBox(
                           height: 24,
@@ -248,29 +244,6 @@ class _LinkDeviceScreenState extends State<LinkDeviceScreen> {
                         ),
                 ),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          Fluttertoast.showToast(
-                            msg: "QR Scanner coming soon...",
-                            gravity: ToastGravity.CENTER,
-                          );
-                        },
-                  child: const Text(
-                    "Scan QR instead →",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-                const Spacer(),
-                const Text(
-                  "By continuing you agree to our\nTerms & Privacy",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.mutedTeal,
-                    fontSize: 13,
-                  ),
-                ),
               ],
             ),
           ),

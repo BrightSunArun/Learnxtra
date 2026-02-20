@@ -6,6 +6,11 @@ import 'package:LearnXtraParent/screens/auth/password_setup.dart';
 import 'package:LearnXtraParent/screens/dashboard/parent_details.dart';
 import 'package:LearnXtraParent/screens/safety/emergency_contacts_screen.dart';
 import 'package:LearnXtraParent/screens/safety/sos_center_screen.dart';
+import 'package:LearnXtraParent/screens/settings/help_center.dart';
+import 'package:LearnXtraParent/screens/settings/privacy_policy.dart';
+import 'package:LearnXtraParent/screens/settings/terms_conditions.dart';
+import 'package:LearnXtraParent/services/api_service.dart';
+import 'package:LearnXtraParent/utils/api_exception.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -127,51 +132,53 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── App Preferences ──────────────────────────────────────────────────
-            _buildSectionHeader("App Preferences"),
-            const SizedBox(height: 8),
 
-            _SettingsTile(
-              icon: Icons.notifications_none_rounded,
-              title: "Notifications",
-              subtitle: "Alerts, reminders, push settings",
-              trailing: Switch(
-                value: true,
-                activeColor: AppColors.primaryTeal,
-                onChanged: (v) {
-                  getSnackbar(
-                    title: "Toggle",
-                    message: "Notifications ${v ? 'enabled' : 'disabled'}",
-                  );
-                },
-              ),
-            ),
+            // _buildSectionHeader("App Preferences"),
+            // const SizedBox(height: 8),
 
-            _SettingsTile(
-              icon: Icons.dark_mode_outlined,
-              title: "Appearance",
-              subtitle: "Light / Dark mode",
-              trailing: const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.primaryTeal),
-              onTap: () {
-                getSnackbar(
-                  title: "Coming Soon",
-                  message: "Theme settings coming soon",
-                );
-              },
-            ),
+            // _SettingsTile(
+            //   icon: Icons.notifications_none_rounded,
+            //   title: "Notifications",
+            //   subtitle: "Alerts, reminders, push settings",
+            //   trailing: Switch(
+            //     value: true,
+            //     activeColor: AppColors.primaryTeal,
+            //     onChanged: (v) {
+            //       getSnackbar(
+            //         title: "Toggle",
+            //         message: "Notifications ${v ? 'enabled' : 'disabled'}",
+            //       );
+            //     },
+            //   ),
+            // ),
 
-            _SettingsTile(
-              icon: Icons.language,
-              title: "Language",
-              subtitle: "English (default)",
-              trailing: const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.primaryTeal),
-              onTap: () {},
-            ),
+            // _SettingsTile(
+            //   icon: Icons.dark_mode_outlined,
+            //   title: "Appearance",
+            //   subtitle: "Light / Dark mode",
+            //   trailing: const Icon(Icons.chevron_right_rounded,
+            //       color: AppColors.primaryTeal),
+            //   onTap: () {
+            //     getSnackbar(
+            //       title: "Coming Soon",
+            //       message: "Theme settings coming soon",
+            //     );
+            //   },
+            // ),
 
-            const SizedBox(height: 24),
+            // _SettingsTile(
+            //   icon: Icons.language,
+            //   title: "Language",
+            //   subtitle: "English (default)",
+            //   trailing: const Icon(Icons.chevron_right_rounded,
+            //       color: AppColors.primaryTeal),
+            //   onTap: () {},
+            // ),
+
+            // const SizedBox(height: 24),
 
             // ── Support & Legal ──────────────────────────────────────────────────
+
             _buildSectionHeader("Help & Support"),
             const SizedBox(height: 8),
 
@@ -180,9 +187,39 @@ class SettingsScreen extends StatelessWidget {
               title: "Help Center",
               subtitle: "Get help with any issues",
               onTap: () {
-                getSnackbar(
-                  title: "Coming Soon",
-                  message: "Help center under construction",
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const HelpCenterScreen(),
+                  ),
+                );
+              },
+            ),
+
+            _SettingsTile(
+              icon: Icons.help_outline_rounded,
+              title: "Privacy Policy",
+              subtitle: "Learn how we collect and use your data",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PrivacyPolicyScreen(),
+                  ),
+                );
+              },
+            ),
+
+            _SettingsTile(
+              icon: Icons.help_outline_rounded,
+              title: "Terms & Conditions",
+              subtitle: "Understand the rules of using this app",
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TermsConditionsScreen(),
+                  ),
                 );
               },
             ),
@@ -316,9 +353,35 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Get.back();
-                    // Get.toNamed(Routes.login);
+                  onPressed: () async {
+                    final appState = Get.find<AppStateController>();
+                    final parentId = appState.currentParentId.value?.trim();
+                    if (parentId == null || parentId.isEmpty) {
+                      Get.back();
+                      getSnackbar(
+                        title: "Cannot delete",
+                        message: "Parent ID not found. Please sign in again.",
+                      );
+                      return;
+                    }
+                    Get.back();
+                    try {
+                      final api = Get.find<ApiService>();
+                      await api.deleteParent(parentId);
+                      await api.clearTokens();
+                      await appState.logout();
+                      Get.offAllNamed('/');
+                    } on ApiException catch (e) {
+                      getSnackbar(
+                        title: "Delete failed",
+                        message: e.message,
+                      );
+                    } catch (e) {
+                      getSnackbar(
+                        title: "Delete failed",
+                        message: "Could not delete account. Please try again.",
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red[700],

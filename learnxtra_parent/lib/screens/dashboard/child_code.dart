@@ -1,8 +1,10 @@
-import 'package:LearnXtraParent/screens/analytics/child_settings.dart';
+import 'package:LearnXtraParent/screens/main_navigation.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
 import '../../services/api_service.dart';
 
@@ -45,6 +47,9 @@ class _ChildConnectionCodeScreenState extends State<ChildConnectionCodeScreen> {
       if (codeFromServer == null || codeFromServer.isEmpty) {
         throw Exception("No code returned from server");
       }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool("isCodeGenerated", true);
 
       setState(() {
         _connectionCode = codeFromServer;
@@ -234,9 +239,9 @@ class _ChildConnectionCodeScreenState extends State<ChildConnectionCodeScreen> {
               ),
             ),
             onPressed: () {
-              getSnackbar(
-                title: "Coming soon",
-                message: "Sharing not implemented yet",
+              Share.share(
+                "Use this code to connect your child: $_connectionCode",
+                subject: "Connect your child",
               );
             },
           ),
@@ -246,12 +251,11 @@ class _ChildConnectionCodeScreenState extends State<ChildConnectionCodeScreen> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () async {
-              Get.offAll(
-                () => ChildScreenTimeSettings(
-                  calledFrom: "new",
-                  childId: widget.childId,
-                  childName: widget.childName,
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const MainNavigation(),
                 ),
+                (route) => false,
               );
             },
             child: const Text(

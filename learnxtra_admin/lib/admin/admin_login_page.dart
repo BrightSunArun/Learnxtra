@@ -187,16 +187,6 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              // TODO: Implement forgot password
-                            },
-                            child: const Text('Forgot Password?'),
-                          ),
-                        ),
                         const SizedBox(height: 32),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _handleLogin,
@@ -220,46 +210,6 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                                 ),
                         ),
                         const SizedBox(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              height: 1,
-                              width: 100,
-                              color: AppColors.gray300,
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              child: Text(
-                                'OR',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: AppColors.gray500,
-                                    ),
-                              ),
-                            ),
-                            Container(
-                              height: 1,
-                              width: 100,
-                              color: AppColors.gray300,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        OutlinedButton.icon(
-                          onPressed: () {
-                            // TODO: Implement OTP login
-                          },
-                          icon: const Icon(Icons.message_outlined),
-                          label: const Text('Sign in with OTP'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
                       ],
                     ),
                   ),

@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppStateController extends GetxController {
-  // ── Existing fields ──
   var isLinked = false.obs;
   var isLocked = true.obs;
   var unlocksToday = 0.obs;
@@ -19,21 +18,20 @@ class AppStateController extends GetxController {
   var correctAnswersToday = 0.obs;
   Rx<DateTime?> lastQuizDate = Rx<DateTime?>(null);
 
-  List<String> get availableSubjects {
-    return const ['Science', 'Math', 'English', 'Geography'];
-  }
+  final RxList<String> availableSubjects = <String>[].obs;
+  var subjectsLoading = false.obs;
+  String? subjectsError;
 
   List<Map<String, dynamic>> getQuestionsForSubject(String subject) {
-    return []; // ← implement later
+    return [];
   }
 
-  // ── NEW: Parent Mode ──
   var isParentMode = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadState(); // ensure loaded early
+    loadState();
   }
 
   void resetDailyData() {
@@ -42,7 +40,7 @@ class AppStateController extends GetxController {
       unlocksToday.value = 0;
       correctAnswersToday.value = 0;
       lastQuizDate.value = now;
-      saveState(); // persist reset
+      saveState();
     }
   }
 
@@ -59,12 +57,10 @@ class AppStateController extends GetxController {
   void startQuizFlow() => isAttemptingQuiz.value = true;
   void endQuizFlow() => isAttemptingQuiz.value = false;
 
-  // ── Parent mode toggle ──
   void toggleParentMode() {
     isParentMode.value = !isParentMode.value;
     saveState();
 
-    // Optional feedback
     Get.snackbar(
       backgroundColor: AppColors.primaryTeal,
       colorText: Colors.white,
@@ -91,7 +87,6 @@ class AppStateController extends GetxController {
     await prefs.setInt('grade', grade.value);
     await prefs.setString('board', board.value);
 
-    // NEW
     await prefs.setBool('isParentMode', isParentMode.value);
   }
 
@@ -110,6 +105,20 @@ class AppStateController extends GetxController {
     board.value = prefs.getString('board') ?? 'CBSE';
 
     isParentMode.value = prefs.getBool('isParentMode') ?? false;
+  }
+
+  Future<void> loadSubjects(dynamic apiService) async {
+    subjectsLoading.value = true;
+    subjectsError = null;
+    try {
+      final list = await apiService.getAdminSubjects();
+      availableSubjects.assignAll(list);
+    } catch (e) {
+      subjectsError = e.toString();
+      availableSubjects.clear();
+    } finally {
+      subjectsLoading.value = false;
+    }
   }
 }
 

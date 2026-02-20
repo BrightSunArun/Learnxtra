@@ -15,6 +15,12 @@ class AppTheme {
         error: AppColors.error,
       ),
       scaffoldBackgroundColor: AppColors.white,
+      dropdownMenuTheme: DropdownMenuThemeData(
+        inputDecorationTheme: InputDecorationTheme(),
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStateProperty.all(AppColors.white),
+        ),
+      ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
         centerTitle: false,
@@ -90,7 +96,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       ),
       textTheme: const TextTheme(
         displayLarge: TextStyle(
@@ -164,6 +171,12 @@ class AppTheme {
         error: AppColors.error,
       ),
       scaffoldBackgroundColor: AppColors.gray900,
+      dropdownMenuTheme: DropdownMenuThemeData(
+        inputDecorationTheme: InputDecorationTheme(),
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStateProperty.all(AppColors.gray800),
+        ),
+      ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
         centerTitle: false,

@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:LearnXtraChild/src/controller/app_controller.dart';
 import 'package:LearnXtraChild/src/screens/auth/bottom_navigation_bar.dart';
-import 'package:LearnXtraChild/src/screens/auth/link_device.dart'; // ensure path matches your file
-// If your link device file is named link_device_screen.dart change the import accordingly.
+import 'package:LearnXtraChild/src/screens/auth/link_device.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -26,10 +25,8 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 1800));
 
     if (!app.isLinked.value) {
-      // Not linked -> take user to LinkDevice screen
       Get.off(() => const LinkDeviceScreen());
     } else {
-      // Already linked -> go to bottom navigation
       Get.off(() => const PersistentNavBar());
     }
   }

@@ -2,6 +2,40 @@ import 'dart:convert';
 import 'package:LearnXtraChild/src/utils/api_exception.dart';
 import 'package:http/http.dart' as http;
 
+class SosStatusResponse {
+  final String id;
+  final String childId;
+  final String status;
+  final String? approvedBy;
+  final String? approvedAt;
+  final String createdAt;
+  final String updatedAt;
+
+  SosStatusResponse({
+    required this.id,
+    required this.childId,
+    required this.status,
+    this.approvedBy,
+    this.approvedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory SosStatusResponse.fromJson(Map<String, dynamic> json) {
+    return SosStatusResponse(
+      id: json['id'] as String? ?? '',
+      childId: json['child_id'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      approvedBy: json['approved_by'] as String?,
+      approvedAt: json['approved_at'] as String?,
+      createdAt: json['created_at'] as String? ?? '',
+      updatedAt: json['updated_at'] as String? ?? '',
+    );
+  }
+
+  bool get isApproved => status == 'approved';
+}
+
 class ApiService {
   final Map<String, String> defaultHeaders;
   final Duration timeout;
@@ -136,6 +170,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> startQuiz({
+    required String subject,
     required String childId,
     required int grade,
     required String board,
@@ -144,6 +179,7 @@ class ApiService {
     final path = 'child/$childId/quiz/start';
 
     final body = {
+      "subject": subject,
       "grade": grade,
       "board": board,
     };
@@ -216,7 +252,8 @@ class ApiService {
     return _handleResponse(response) as Map<String, dynamic>;
   }
 
-  Future<Map<String, dynamic>> getSosStatus({
+  /// GET /api/child/sos/{sosId}/status — returns SOS request status (e.g. approved, pending).
+  Future<SosStatusResponse> getSosStatus({
     required String sosId,
     Map<String, String>? extraHeaders,
   }) async {
@@ -228,16 +265,17 @@ class ApiService {
     final response =
         await http.get(uri, headers: mergedHeaders).timeout(timeout);
 
-    return _handleResponse(response) as Map<String, dynamic>;
+    final data = _handleResponse(response) as Map<String, dynamic>;
+    return SosStatusResponse.fromJson(data);
   }
 
   Future<Map<String, dynamic>> submitQuizAnswer({
-    required String childId,
+    required String sessionId,
     required String questionId,
     required String selectedAnswer,
     Map<String, String>? extraHeaders,
   }) async {
-    final path = 'child/quiz/$childId/answer';
+    final path = 'child/quiz/$sessionId/answer';
 
     final body = {
       "questionId": questionId,
@@ -305,5 +343,96 @@ class ApiService {
         await http.get(uri, headers: mergedHeaders).timeout(timeout);
 
     return _handleResponse(response);
+  }
+
+  Future<dynamic> getUsageChart({
+    required String childId,
+    required String type,
+    required int year,
+    required int month,
+    Map<String, String>? extraHeaders,
+  }) async {
+    final path = 'child/$childId/usage-chart';
+    final queryParameters = {
+      'type': type,
+      'year': year.toString(),
+      'month': month.toString(),
+    };
+    final mergedHeaders = _mergeHeaders(extraHeaders);
+    final uri = _buildUri(path, queryParameters);
+
+    final response =
+        await http.get(uri, headers: mergedHeaders).timeout(timeout);
+
+    return _handleResponse(response);
+  }
+
+  Future<dynamic> getPerformanceChart({
+    required String childId,
+    required String type,
+    required int year,
+    required int month,
+    Map<String, String>? extraHeaders,
+  }) async {
+    final path = 'child/$childId/performance-chart';
+    final queryParameters = {
+      'type': type,
+      'year': year.toString(),
+      'month': month.toString(),
+    };
+    final mergedHeaders = _mergeHeaders(extraHeaders);
+    final uri = _buildUri(path, queryParameters);
+
+    final response =
+        await http.get(uri, headers: mergedHeaders).timeout(timeout);
+
+    return _handleResponse(response);
+  }
+
+  Future<Map<String, dynamic>> unlockParentMode({
+    required String childId,
+    required String pinCode,
+    Map<String, String>? extraHeaders,
+  }) async {
+    final path = 'child/$childId/parent-mode/unlock';
+
+    final body = {
+      "pin_code": pinCode,
+    };
+
+    final mergedHeaders = _mergeHeaders(extraHeaders);
+    final uri = _buildUri(path);
+
+    final response = await http
+        .post(
+          uri,
+          headers: mergedHeaders,
+          body: jsonEncode(body),
+        )
+        .timeout(timeout);
+
+    return _handleResponse(response) as Map<String, dynamic>;
+  }
+
+  Future<List<String>> getAdminSubjects({
+    Map<String, String>? extraHeaders,
+  }) async {
+    final decoded = await get('admin/subjects', headers: extraHeaders);
+    if (decoded == null) return [];
+    if (decoded is Map<String, dynamic>) {
+      final list = decoded['data'];
+      if (list is List) {
+        return list
+            .map((e) {
+              if (e is Map && e['name'] != null) {
+                return e['name'].toString();
+              }
+              return null;
+            })
+            .whereType<String>()
+            .toList();
+      }
+    }
+    return [];
   }
 }

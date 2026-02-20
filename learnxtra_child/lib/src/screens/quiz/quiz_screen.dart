@@ -1,10 +1,12 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: avoid_print, use_build_context_synchronously
 
+import 'package:LearnXtraChild/src/screens/quiz/quiz_failed.dart';
+import 'package:LearnXtraChild/src/screens/quiz/quiz_passed.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:LearnXtraChild/src/controller/app_controller.dart';
 import 'package:LearnXtraChild/src/utils/app_colors.dart';
-import 'package:LearnXtraChild/src/routes/app_routes.dart';
+// import 'package:LearnXtraChild/src/routes/app_routes.dart';
 import 'package:LearnXtraChild/src/services/api_service.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -58,24 +60,59 @@ class _QuizScreenState extends State<QuizScreen> {
         'board': controller.board.value,
       };
 
-      print(' \n\n\n╔═══════════════════════════════════════════════');
-      print('║ START QUIZ API CALL');
-      print('║ Sending → $payload');
-      print('╚═══════════════════════════════════════════════ \n\n\n ');
+      print(
+          ' \n\n\n╔═══════════════════════════════ START SEQUENTIAL QUIZ FLOW ═══════════════════════════════');
+      print('║ Step 1: GET QUIZ CONFIG');
+      print('║ Sending → childId: $childId');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n ');
 
+      // 1. Call getQuizConfig first (series requirement)
+      Map<String, dynamic>? configResponse;
+      try {
+        configResponse = await ApiService().getQuizConfig(childId: childId);
+        print(
+            ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
+        print('║ GET QUIZ CONFIG RESPONSE');
+        print('║ $configResponse');
+        print(
+            '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
+      } catch (e, stack) {
+        print(
+            ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
+        print('║ GET QUIZ CONFIG FAILED (continuing to startQuiz)');
+        print('║ Error: $e');
+        print('║ Stack: $stack');
+        print(
+            '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
+      }
+
+      print(
+          ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
+      print('║ Step 2: START QUIZ');
+      print('║ Sending → $payload');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n ');
+
+      // 2. Then call startQuiz
       final response = await ApiService().startQuiz(
+        subject: widget.subject,
         childId: childId,
         grade: controller.grade.value,
         board: controller.board.value,
       );
 
-      print(' \n\n\n╔═══════════════════════════════════════════════');
+      print(
+          ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
       print('║ START QUIZ RESPONSE');
       print('║ $response');
-      print('╚═══════════════════════════════════════════════ \n\n\n');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
-      quizId =
-          response['quizId'] as String? ?? response['sessionId'] as String?;
+      // Session/quiz id from API — used as sessionId for submit-answer and quizId for complete
+      quizId = response['quizId']?.toString() ??
+          response['sessionId']?.toString() ??
+          response['session_id']?.toString();
 
       final rawQuestions = (response['questions'] as List<dynamic>?) ?? [];
 
@@ -107,7 +144,7 @@ class _QuizScreenState extends State<QuizScreen> {
         }
 
         return {
-          'id': qMap['id']?.toString() ?? '',
+          'id': qMap['id']?.toString() ?? qMap['question_id']?.toString() ?? '',
           'question': qMap['question_text']?.toString() ??
               qMap['question']?.toString() ??
               'Question not available',
@@ -120,15 +157,18 @@ class _QuizScreenState extends State<QuizScreen> {
         return;
       }
     } catch (e, stack) {
-      print(' \n\n\n╔═══════════════════════════════════════════════');
+      print(
+          ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
       print('║ START QUIZ API FAILED');
       print('║ Error: $e');
       print('║ Stack: $stack');
-      print('╚═══════════════════════════════════════════════ \n\n\n');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
       errorMessage = "Failed to load quiz: ${e.toString().split('\n').first}";
     }
 
+    // fallback to local questions if API did not provide any
     setState(() {
       questions = controller.getQuestionsForSubject(widget.subject);
       isLoading = false;
@@ -140,43 +180,51 @@ class _QuizScreenState extends State<QuizScreen> {
     return index >= 0 && index < letters.length ? letters[index] : '';
   }
 
+  /// Submits answer to API. [selectedAnswer] must be the option letter (e.g. "B")
+  /// because the API expects/returns the letter key.
   Future<Map<String, dynamic>?> _submitAnswerToApi(
     String questionId,
-    String selectedLetter,
+    String selectedAnswer,
   ) async {
     if (quizId == null) return null;
 
     final payload = {
       'childId': controller.childId.value,
       'questionId': questionId,
-      'selectedAnswer': selectedLetter,
-      'quizId': quizId, // added for clarity (even if not used in every backend)
+      'selectedAnswer': selectedAnswer,
+      'quizId': quizId,
     };
 
-    print(' \n\n\n╔═══════════════════════════════════════════════');
+    print(
+        ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
     print('║ SUBMIT ANSWER API CALL (Q#$questionId)');
     print('║ Sending → $payload');
-    print('╚═══════════════════════════════════════════════ \n\n\n');
+    print(
+        '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
     try {
       final response = await ApiService().submitQuizAnswer(
-        childId: controller.childId.value,
         questionId: questionId,
-        selectedAnswer: selectedLetter,
+        selectedAnswer: selectedAnswer,
+        sessionId: quizId!,
       );
 
-      print(' \n\n\n╔═══════════════════════════════════════════════');
+      print(
+          ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
       print('║ SUBMIT ANSWER RESPONSE');
       print('║ $response');
-      print('╚═══════════════════════════════════════════════ \n\n\n');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
       return response as Map<String, dynamic>?;
     } catch (e, stack) {
-      print(' \n\n\n╔═══════════════════════════════════════════════');
+      print(
+          ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
       print('║ SUBMIT ANSWER API FAILED');
       print('║ Error: $e');
       print('║ Stack: $stack');
-      print('╚═══════════════════════════════════════════════ \n\n\n');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
       return null;
     }
   }
@@ -203,8 +251,14 @@ class _QuizScreenState extends State<QuizScreen> {
       return;
     }
 
+    // API expects option letter (e.g. "B"), not text ("Mars")
     _submitAnswerToApi(questionId, letter).then((apiResponse) {
       final bool isCorrect = apiResponse?['isCorrect'] == true;
+      // Store correct answer from API (e.g. "C") for display on results screen
+      final rawCorrect =
+          apiResponse?['correctAnswer'] ?? apiResponse?['correct_answer'];
+      final String? correctAnswerFromServer =
+          rawCorrect != null ? rawCorrect.toString().trim() : null;
 
       setState(() {
         quizSummary.add({
@@ -213,6 +267,7 @@ class _QuizScreenState extends State<QuizScreen> {
           'selectedText': selectedText,
           'selectedLetter': letter,
           'isCorrect': isCorrect,
+          'correctAnswer': correctAnswerFromServer,
         });
 
         if (isCorrect) correctCount++;
@@ -221,6 +276,19 @@ class _QuizScreenState extends State<QuizScreen> {
       Future.delayed(const Duration(milliseconds: 1200), _moveToNext);
     }).catchError((e) {
       debugPrint("Submit error: $e");
+
+      // Even on error → still move forward (fallback behavior preserved)
+      setState(() {
+        quizSummary.add({
+          'question': currentQuestion['question'],
+          'options': currentQuestion['options'],
+          'selectedText': selectedText,
+          'selectedLetter': letter,
+          'isCorrect': false,
+          'correctAnswer': null,
+        });
+      });
+
       Future.delayed(const Duration(milliseconds: 900), _moveToNext);
     });
   }
@@ -250,22 +318,28 @@ class _QuizScreenState extends State<QuizScreen> {
       'unlockGranted': false,
     };
 
+    print(' \n\n\n ================= resultData: $resultData');
+
     if (quizId != null && quizId!.isNotEmpty) {
-      print('   \n\n\n╔═══════════════════════════════════════════════');
-      print('║ COMPLETE QUIZ API CALL');
+      print(
+          '   \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
+      print('║ Step 4: COMPLETE QUIZ API CALL');
       print('║ quizId → $quizId');
       print('║ Local correct count so far → $correctCount');
-      print('╚═══════════════════════════════════════════════ \n\n\n');
+      print(
+          '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
       try {
         final apiResult = await ApiService().completeQuiz(
           quizId: quizId!,
         );
 
-        print(' \n\n\n╔═══════════════════════════════════════════════');
+        print(
+            ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
         print('║ COMPLETE QUIZ RESPONSE');
         print('║ $apiResult');
-        print('╚═══════════════════════════════════════════════ \n\n\n');
+        print(
+            '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
         if (apiResult['success'] == true) {
           final serverCorrect =
@@ -283,18 +357,18 @@ class _QuizScreenState extends State<QuizScreen> {
             'fromServer': true,
           };
 
-          // Update today's correct count from server (more trustworthy)
           controller.correctAnswersToday.value += serverCorrect;
           controller.saveState();
         }
       } catch (e, stack) {
-        print(' \n\n\n╔═══════════════════════════════════════════════');
+        print(
+            ' \n\n\n╔═══════════════════════════════════════════════════════════════════════════════════════════════');
         print('║ COMPLETE QUIZ API FAILED');
         print('║ Error: $e');
         print('║ Stack: $stack');
-        print('╚═══════════════════════════════════════════════ \n\n\n');
+        print(
+            '╚═══════════════════════════════════════════════════════════════════════════════════════════════ \n\n\n');
 
-        // fallback — use local calculation
         controller.correctAnswersToday.value += correctCount;
         controller.saveState();
       }
@@ -305,9 +379,25 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     if (resultData['passed'] == true) {
-      Get.offAllNamed(AppRoutes.quizPassed, arguments: resultData);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => QuizPassedScreen(
+            correct: resultData['correct'],
+            total: resultData['total'],
+            quizSummary: resultData['summary'],
+          ),
+        ),
+      );
     } else {
-      Get.offAllNamed(AppRoutes.quizFailed, arguments: resultData);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => QuizFailedScreen(
+            correct: resultData['correct'],
+            total: resultData['total'],
+            quizSummary: resultData['summary'],
+          ),
+        ),
+      );
     }
   }
 
@@ -318,7 +408,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // build method remains completely unchanged
     if (isLoading) {
       return Scaffold(
         backgroundColor: AppColors.backgroundCream,

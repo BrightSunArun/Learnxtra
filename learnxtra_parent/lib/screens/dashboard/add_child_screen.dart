@@ -1,11 +1,12 @@
 // ignore_for_file: deprecated_member_use, avoid_print
 
 import 'package:LearnXtraParent/controller/app_state.dart';
-import 'package:LearnXtraParent/screens/dashboard/child_code.dart';
+import 'package:LearnXtraParent/screens/analytics/child_settings.dart';
 import 'package:LearnXtraParent/services/api_service.dart';
 import 'package:LearnXtraParent/utils/api_exception.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../constants/app_colors.dart';
 import '../../models/child.dart';
@@ -36,8 +37,24 @@ class _AddChildScreenState extends State<AddChildScreen> {
   String? _selectedState;
   String? _selectedBoard;
 
-  final List<String> _grades = List.generate(8, (i) => "Grade ${i + 3}");
+  List<String> _grades = [];
+  List<String> _boards = [];
+
+  bool _isLoadingReferenceData = true;
+  String? _loadError;
+
   final List<String> _indianStates = [
+    // Union Territories
+    "Andaman and Nicobar Islands",
+    "Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi",
+    "Jammu and Kashmir",
+    "Ladakh",
+    "Lakshadweep",
+    "Puducherry",
+
+    // States
     "Andhra Pradesh",
     "Arunachal Pradesh",
     "Assam",
@@ -68,8 +85,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
     "West Bengal",
   ];
 
-  final List<String> _boards = ["CBSE", "ICSE", "State Board", "IB", "IGCSE"];
-
   late final AppStateController _stateController;
   late final ApiService _apiService;
 
@@ -78,20 +93,127 @@ class _AddChildScreenState extends State<AddChildScreen> {
     super.initState();
     _stateController = Get.find<AppStateController>();
     _apiService = Get.find<ApiService>();
-    if (widget.isEdit) {
+
+    _loadReferenceData();
+
+    if (widget.isEdit && widget.childId != null) {
       loadChildData();
+    }
+  }
+
+  Future<void> _loadReferenceData() async {
+    setState(() {
+      _isLoadingReferenceData = true;
+      _loadError = null;
+    });
+
+    try {
+      // Fetch both in parallel
+      final results = await Future.wait([
+        _apiService.getGrades(),
+        _apiService.getBoards(),
+      ]);
+
+      final gradesResp = results[0];
+      final boardsResp = results[1];
+
+      List<String> fetchedGrades = [];
+      List<String> fetchedBoards = [];
+
+      // Handle grades response — show data[].name in dropdown
+      if (gradesResp is List) {
+        fetchedGrades = gradesResp
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      } else if (gradesResp is Map && gradesResp['data'] is List) {
+        fetchedGrades = (gradesResp['data'] as List)
+            .map((e) => (e is Map ? e['name']?.toString() : e.toString()) ?? '')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
+
+      // Handle boards response — show data[].name in dropdown
+      if (boardsResp is List) {
+        fetchedBoards = boardsResp
+            .map((e) => e.toString().trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      } else if (boardsResp is Map) {
+        if (boardsResp['data'] is List) {
+          fetchedBoards = (boardsResp['data'] as List)
+              .map((e) =>
+                  (e is Map ? e['name']?.toString() : e.toString()) ?? '')
+              .map((s) => s.trim())
+              .where((s) => s.isNotEmpty)
+              .toList();
+        } else if (boardsResp['boards'] is List) {
+          fetchedBoards = (boardsResp['boards'] as List)
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList();
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _grades = fetchedGrades.isNotEmpty
+              ? fetchedGrades
+              : List.generate(8, (i) => "Grade ${i + 3}");
+
+          _boards = fetchedBoards.isNotEmpty
+              ? fetchedBoards
+              : ["CBSE", "ICSE", "State Board", "IB", "IGCSE"];
+
+          _isLoadingReferenceData = false;
+        });
+      }
+    } catch (e, st) {
+      print("Failed to load grades/boards: $e");
+      print(st);
+
+      if (mounted) {
+        setState(() {
+          _isLoadingReferenceData = false;
+          _loadError = "Failed to load grades & boards. Using defaults.";
+        });
+
+        getSnackbar(
+          title: "Connection Issue",
+          message: "Couldn't load latest grades/boards. Using fallback values.",
+        );
+      }
     }
   }
 
   String? normalizeGradeValue(dynamic gradeVal) {
     if (gradeVal == null) return null;
 
-    final num = int.tryParse(gradeVal.toString().trim()) ??
-        double.tryParse(gradeVal.toString().trim())?.toInt();
+    final str = gradeVal.toString().trim().toLowerCase();
 
-    if (num != null && num >= 3 && num <= 10) {
-      return "Grade $num";
+    // Try to match "Grade 6", "6", "grade 6", "VI" etc.
+    final num = int.tryParse(str.replaceAll(RegExp(r'[^0-9]'), ''));
+
+    if (num != null && num >= 1 && num <= 12) {
+      // Check if API uses "Grade X" format
+      if (_grades.any((g) => g.toLowerCase().contains("grade"))) {
+        return "Grade $num";
+      }
+      // Or just number
+      else if (_grades.contains(num.toString())) {
+        return num.toString();
+      }
     }
+
+    // Exact match attempt
+    final exact = _grades.firstWhere(
+      (g) => g.toLowerCase() == str,
+      orElse: () => "",
+    );
+
+    if (exact.isNotEmpty) return exact;
+
     return null;
   }
 
@@ -111,11 +233,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
         childJson = Map<String, dynamic>.from(resp);
       }
 
-      print('DEBUG: child keys     = ${childJson.keys.toList()}');
-      print('DEBUG: raw grade      = ${childJson['grade']}');
-      print(
-          'DEBUG: normalized     = ${normalizeGradeValue(childJson['grade'])}');
-
       final name = childJson['name']?.toString().trim() ?? '';
 
       final ageRaw = childJson['age'];
@@ -130,6 +247,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
       final schoolAddress = childJson['schoolAddress']?.toString().trim() ?? '';
 
       final gradeNormalized = normalizeGradeValue(childJson['grade']);
+      final boardFromServer = childJson['board']?.toString().trim();
 
       if (!mounted) return;
 
@@ -138,20 +256,23 @@ class _AddChildScreenState extends State<AddChildScreen> {
         _ageController.text = ageText;
         _schoolNameController.text = schoolName;
         _schoolAddressController.text = schoolAddress;
-        _selectedGrade = gradeNormalized;
+        _selectedGrade = _grades.contains(gradeNormalized)
+            ? gradeNormalized
+            : null; // only set if valid
+        _selectedBoard =
+            _boards.contains(boardFromServer) ? boardFromServer : null;
         _selectedState = childJson['state']?.toString().trim();
-        _selectedBoard = childJson['board']?.toString().trim();
       });
 
       print('DEBUG: set grade → $_selectedGrade');
-      print('DEBUG: grade in list? ${_grades.contains(_selectedGrade)}');
+      print('DEBUG: set board → $_selectedBoard');
     } catch (e, st) {
       print('ERROR loading child: $e');
       print(st);
       if (mounted) {
         getSnackbar(
           title: "Error",
-          message: "Failed to load child: ${e.toString()}",
+          message: "Failed to load child details: ${e.toString()}",
         );
       }
     }
@@ -163,26 +284,26 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedGrade == null) {
-      getSnackbar(
-        title: "Error",
-        message: "Please select grade",
-      );
+      getSnackbar(title: "Error", message: "Please select grade");
+      return;
+    }
+
+    if (_selectedBoard == null) {
+      getSnackbar(title: "Error", message: "Please select board");
       return;
     }
 
     final name = _nameController.text.trim();
     final gradeStr = _selectedGrade!;
-    final board = _selectedBoard ?? "CBSE";
+    final board = _selectedBoard!;
 
+    // Extract numeric grade value
     final gradeNumber = int.tryParse(
-      gradeStr.replaceAll("Grade ", "").trim(),
+      gradeStr.replaceAll(RegExp(r'[^0-9]'), '').trim(),
     );
 
     if (gradeNumber == null) {
-      getSnackbar(
-        title: "Invalid",
-        message: "Invalid grade format",
-      );
+      getSnackbar(title: "Invalid", message: "Invalid grade format");
       return;
     }
 
@@ -196,12 +317,14 @@ class _AddChildScreenState extends State<AddChildScreen> {
         age: int.parse(_ageController.text.trim()),
         schoolName: _schoolNameController.text.trim(),
         schoolAddress: _schoolAddressController.text.trim(),
-        subjects: ["English", "Hindi", "Maths"],
+        subjects: ["English", "Hindi", "Maths"], // ← still hardcoded
       );
 
-      print("This is the response: $response");
+      print("Update response: $response");
 
-      final childIdFromServer = response['child']['childId'] as String?;
+      final childIdFromServer = response['child']?['childId']?.toString() ??
+          response['childId']?.toString();
+
       if (childIdFromServer == null || response['success'] != true) {
         throw Exception("Child update failed - invalid response");
       }
@@ -211,9 +334,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         parentId: _stateController.currentParentId.value ?? "current_parent_id",
         name: name,
         grade: gradeStr,
-        age: _ageController.text.trim().isNotEmpty
-            ? int.tryParse(_ageController.text.trim())
-            : null,
+        age: int.tryParse(_ageController.text.trim()),
         state: _selectedState,
         board: board,
         schoolName: _schoolNameController.text.trim().isNotEmpty
@@ -227,8 +348,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
         createdAt: DateTime.now(),
       );
 
-      print("This is the newChild: $newChild");
-
       _stateController.addChild(newChild);
 
       if (!mounted) return;
@@ -241,8 +360,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
       String errorMsg = "Failed to update child";
       if (e is ApiException) {
@@ -262,26 +379,25 @@ class _AddChildScreenState extends State<AddChildScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedGrade == null) {
-      getSnackbar(
-        title: "Error",
-        message: "Please select grade",
-      );
+      getSnackbar(title: "Error", message: "Please select grade");
+      return;
+    }
+
+    if (_selectedBoard == null) {
+      getSnackbar(title: "Error", message: "Please select board");
       return;
     }
 
     final name = _nameController.text.trim();
     final gradeStr = _selectedGrade!;
-    final board = _selectedBoard ?? "CBSE";
+    final board = _selectedBoard!;
 
     final gradeNumber = int.tryParse(
-      gradeStr.replaceAll("Grade ", "").trim(),
+      gradeStr.replaceAll(RegExp(r'[^0-9]'), '').trim(),
     );
 
     if (gradeNumber == null) {
-      getSnackbar(
-        title: "Invalid",
-        message: "Invalid grade format",
-      );
+      getSnackbar(title: "Invalid", message: "Invalid grade format");
       return;
     }
 
@@ -294,7 +410,6 @@ class _AddChildScreenState extends State<AddChildScreen> {
         age: int.parse(_ageController.text.trim()),
         schoolName: _schoolNameController.text.trim(),
         schoolAddress: _schoolAddressController.text.trim(),
-        subjects: ["English", "Hindi", "Maths"],
       );
 
       final childIdFromServer = response['childId'] as String?;
@@ -307,9 +422,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
         parentId: _stateController.currentParentId.value ?? "current_parent_id",
         name: name,
         grade: gradeStr,
-        age: _ageController.text.trim().isNotEmpty
-            ? int.tryParse(_ageController.text.trim())
-            : null,
+        age: int.tryParse(_ageController.text.trim()),
         state: _selectedState,
         board: board,
         schoolName: _schoolNameController.text.trim().isNotEmpty
@@ -323,37 +436,26 @@ class _AddChildScreenState extends State<AddChildScreen> {
         createdAt: DateTime.now(),
       );
 
-      print("This is the newChild: $newChild");
-
       _stateController.addChild(newChild);
 
       if (!mounted) return;
 
-      getSnackbar(
-        title: "Success",
-        message: "Child added successfully!",
-      );
-
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => ChildConnectionCodeScreen(
+          builder: (_) => ChildScreenTimeSettings(
             childId: childIdFromServer,
             childName: name,
+            calledFrom: "add_child",
           ),
         ),
+        (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
       String errorMsg = "Failed to add child";
-      if (e is ApiException) {
-        errorMsg = e.message;
-      } else {
-        errorMsg = e.toString();
-      }
+      if (e is ApiException) errorMsg = e.message;
 
       getSnackbar(
         title: "Error",
@@ -369,6 +471,8 @@ class _AddChildScreenState extends State<AddChildScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     int maxLines = 1,
+    List<TextInputFormatter> inputFormatters = const [],
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -383,11 +487,13 @@ class _AddChildScreenState extends State<AddChildScreen> {
         ),
         const SizedBox(height: 6),
         TextFormField(
+          textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
           controller: controller,
           keyboardType: keyboardType,
           validator: validator,
           maxLines: maxLines,
-          style: TextStyle(fontSize: 15),
+          style: const TextStyle(fontSize: 15),
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: AppColors.gray500, size: 22),
             filled: true,
@@ -398,24 +504,18 @@ class _AddChildScreenState extends State<AddChildScreen> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryTeal,
-                width: 1,
-              ),
+              borderSide:
+                  const BorderSide(color: AppColors.primaryTeal, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryTeal,
-                width: 1,
-              ),
+              borderSide:
+                  const BorderSide(color: AppColors.primaryTeal, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryTeal,
-                width: 1,
-              ),
+              borderSide:
+                  const BorderSide(color: AppColors.primaryTeal, width: 1),
             ),
           ),
         ),
@@ -430,6 +530,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
     required IconData icon,
     required void Function(String?) onChanged,
     String? Function(String?)? validator,
+    bool isLoading = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,6 +548,7 @@ class _AddChildScreenState extends State<AddChildScreen> {
           value: value,
           onChanged: onChanged,
           validator: validator,
+          isExpanded: true,
           items: items
               .map(
                 (e) => DropdownMenuItem(
@@ -455,43 +557,38 @@ class _AddChildScreenState extends State<AddChildScreen> {
                 ),
               )
               .toList(),
-          style: TextStyle(
-            fontSize: 15,
-            color: AppColors.textDark,
-          ),
+          style: const TextStyle(fontSize: 15, color: AppColors.textDark),
           decoration: InputDecoration(
-            prefixIcon: Icon(
-              icon,
-              color: AppColors.gray500,
-              size: 22,
-            ),
+            prefixIcon: Icon(icon, color: AppColors.gray500, size: 22),
             filled: true,
             fillColor: AppColors.white,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryTeal,
-                width: 1,
-              ),
+              borderSide:
+                  const BorderSide(color: AppColors.primaryTeal, width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryTeal,
-                width: 1,
-              ),
+              borderSide:
+                  const BorderSide(color: AppColors.primaryTeal, width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: AppColors.primaryTeal,
-                width: 1,
-              ),
+              borderSide:
+                  const BorderSide(color: AppColors.primaryTeal, width: 1),
             ),
+            suffixIcon: isLoading
+                ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
+                  )
+                : null,
           ),
         ),
       ],
@@ -500,13 +597,29 @@ class _AddChildScreenState extends State<AddChildScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingReferenceData) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Add your child")),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text("Loading grades & boards..."),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         leadingWidth: 0,
-        leading: SizedBox.shrink(),
+        leading: const SizedBox.shrink(),
         title: Text(
           widget.isEdit ? "Edit your child details" : "Add your child",
-          style: TextStyle(
+          style: const TextStyle(
             wordSpacing: 1.6,
             letterSpacing: 1.1,
             fontWeight: FontWeight.w800,
@@ -520,153 +633,212 @@ class _AddChildScreenState extends State<AddChildScreen> {
           width: double.infinity,
           height: double.infinity,
           color: Colors.white,
-          child: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 20),
-                    Text(
-                      widget.isEdit
-                          ? "Added something wrong? Edit your child details"
-                          : "Let's get started with their learning journey",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.gray900,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor:
-                                AppColors.primaryTeal.withOpacity(0.1),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 20),
+                  Text(
+                    widget.isEdit
+                        ? "Added something wrong? Edit your child details"
+                        : "Let's get started with their learning journey",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: AppColors.gray900),
+                  ),
+                  const SizedBox(height: 32),
+                  Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor:
+                              AppColors.primaryTeal.withOpacity(0.1),
+                          child: const Icon(
+                            Icons.child_care,
+                            size: 50,
+                            color: AppColors.gray400,
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryTeal,
+                              shape: BoxShape.circle,
+                            ),
                             child: const Icon(
-                              Icons.child_care,
-                              size: 50,
-                              color: AppColors.gray400,
+                              Icons.add_a_photo,
+                              color: Colors.white,
+                              size: 18,
                             ),
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primaryTeal,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.add_a_photo,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Show error if API failed but we have fallback
+                  if (_loadError != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _loadError!,
+                        style: TextStyle(color: Colors.orange.shade900),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  buildTextField(
+                    label: "Child's Full Name",
+                    textCapitalization: TextCapitalization.words,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                      LengthLimitingTextInputFormatter(50),
+                    ],
+                    keyboardType: TextInputType.name,
+                    controller: _nameController,
+                    icon: Icons.person_outline,
+                    validator: (v) => v?.trim().isEmpty ?? true
+                        ? "Please enter child's name"
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  buildDropdown(
+                    label: "Grade",
+                    value: _selectedGrade,
+                    items: _grades,
+                    icon: Icons.school_outlined,
+                    onChanged: (val) => setState(() => _selectedGrade = val),
+                    validator: (v) => v == null ? "Please select grade" : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  buildTextField(
+                    label: "Age",
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
+                    keyboardType: TextInputType.number,
+                    controller: _ageController,
+                    icon: Icons.cake_outlined,
+                    validator: (v) => v?.trim().isEmpty ?? true
+                        ? "Please enter child's age"
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  buildDropdown(
+                    label: "Education Board",
+                    value: _selectedBoard,
+                    items: _boards,
+                    icon: Icons.book_outlined,
+                    onChanged: (val) => setState(() => _selectedBoard = val),
+                    validator: (v) => v == null ? "Please select board" : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  buildDropdown(
+                    label: "State",
+                    value: _selectedState,
+                    items: _indianStates,
+                    icon: Icons.map_outlined,
+                    onChanged: (val) => setState(() => _selectedState = val),
+                    validator: (v) => v == null ? "Please select state" : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  buildTextField(
+                    label: "School Name",
+                    textCapitalization: TextCapitalization.words,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                      LengthLimitingTextInputFormatter(50),
+                    ],
+                    controller: _schoolNameController,
+                    icon: Icons.school,
+                    validator: (v) => v?.trim().isEmpty ?? true
+                        ? "Please enter school name"
+                        : null,
+                  ),
+                  const SizedBox(height: 14),
+
+                  buildTextField(
+                    label: "School Address",
+                    textCapitalization: TextCapitalization.words,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]')),
+                      LengthLimitingTextInputFormatter(50),
+                    ],
+                    controller: _schoolAddressController,
+                    icon: Icons.location_on_outlined,
+                    maxLines: 2,
+                    validator: (v) => v?.trim().isEmpty ?? true
+                        ? "Please enter school address"
+                        : null,
+                  ),
+                  const SizedBox(height: 40),
+
+                  ElevatedButton(
+                    onPressed: widget.isEdit ? updateChild : submitChild,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.isEdit
+                              ? "Update Child Details"
+                              : "Proceed to Next",
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (!widget.isEdit) ...[
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 20,
+                            color: Colors.white,
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                    const SizedBox(height: 32),
-                    buildTextField(
-                      label: "Child's Full Name",
-                      controller: _nameController,
-                      icon: Icons.person_outline,
-                      validator: (v) => v?.trim().isEmpty ?? true
-                          ? "Please enter child's name"
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    buildDropdown(
-                      label: "Grade",
-                      value: _selectedGrade,
-                      items: _grades,
-                      icon: Icons.school_outlined,
-                      onChanged: (val) => setState(
-                        () => _selectedGrade = val,
-                      ),
-                      validator: (v) =>
-                          v == null ? "Please select grade" : null,
-                    ),
-                    const SizedBox(height: 14),
-                    buildTextField(
-                      label: "Age",
-                      controller: _ageController,
-                      icon: Icons.cake_outlined,
-                      keyboardType: TextInputType.number,
-                      validator: (v) => v?.trim().isEmpty ?? true
-                          ? "Please enter child's age"
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    buildDropdown(
-                      label: "Education Board",
-                      value: _selectedBoard,
-                      items: _boards,
-                      icon: Icons.book_outlined,
-                      onChanged: (val) => setState(
-                        () => _selectedBoard = val,
-                      ),
-                      validator: (v) =>
-                          v == null ? "Please select board" : null,
-                    ),
-                    const SizedBox(height: 14),
-                    buildDropdown(
-                      label: "State",
-                      value: _selectedState,
-                      items: _indianStates,
-                      icon: Icons.map_outlined,
-                      onChanged: (val) => setState(
-                        () => _selectedState = val,
-                      ),
-                      validator: (v) =>
-                          v == null ? "Please select state" : null,
-                    ),
-                    const SizedBox(height: 14),
-                    buildTextField(
-                      label: "School Name",
-                      controller: _schoolNameController,
-                      icon: Icons.school,
-                      validator: (v) => v?.trim().isEmpty ?? true
-                          ? "Please enter school name"
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    buildTextField(
-                      label: "School Address",
-                      controller: _schoolAddressController,
-                      icon: Icons.location_on_outlined,
-                      maxLines: 2,
-                      validator: (v) => v?.trim().isEmpty ?? true
-                          ? "Please enter school address"
-                          : null,
-                    ),
-                    const SizedBox(height: 40),
-                    ElevatedButton(
-                      onPressed: widget.isEdit ? updateChild : submitChild,
-                      child: Text(
-                        widget.isEdit
-                            ? "Update Child Details"
-                            : "Generate Connection Code",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _schoolNameController.dispose();
+    _schoolAddressController.dispose();
+    super.dispose();
   }
 }

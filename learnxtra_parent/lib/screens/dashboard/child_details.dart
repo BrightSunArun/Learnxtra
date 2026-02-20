@@ -342,6 +342,8 @@ class _ChildDetailsScreenState extends State<ChildDetailsScreen> {
                                     "Board", _childData!['board'] ?? "—"),
                                 _buildDetailRow(
                                     "Age", _childData!['age'] ?? "—"),
+                                _buildDetailRow("Code",
+                                    _childData!['generatedCode'] ?? "—"),
                               ],
                             ),
 

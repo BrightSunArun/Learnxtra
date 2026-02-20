@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:LearnXtraParent/controller/app_state.dart';
 import 'package:LearnXtraParent/services/local_storage.dart';
 import 'package:flutter/material.dart';

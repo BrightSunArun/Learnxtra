@@ -43,10 +43,7 @@ class SOSController extends GetxController {
     statusMessage.value = 'Checking for active SOS...';
 
     try {
-      // Try to get the latest known SOS id from your backend or local storage
-      // For this example we assume you store the last sent sosRequestId somewhere
-      // Here we simulate / fetch it — replace with your actual logic
-      final lastSosId = await _getLastSosId(); // ← implement this
+      final lastSosId = await _getLastSosId();
 
       if (lastSosId == null || lastSosId.isEmpty) {
         sosStatus.value = '';
@@ -67,7 +64,7 @@ class SOSController extends GetxController {
     try {
       final response = await apiService.getSosStatus(sosId: sosId);
 
-      final status = (response['status'] ?? '').toString().toLowerCase();
+      final status = response.status.toLowerCase();
       sosStatus.value = status;
 
       if (status == 'pending') {
@@ -101,10 +98,7 @@ class SOSController extends GetxController {
     _statusPollingTimer = null;
   }
 
-  // You should implement this — get last sent SOS id from local storage / secure storage / your API
   Future<String?> _getLastSosId() async {
-    // Example: return await storage.read(key: 'last_sos_id');
-    // For demo — you can return currentSosId.value if already set
     return currentSosId.value.isNotEmpty ? currentSosId.value : null;
   }
 
@@ -353,7 +347,8 @@ class SOSScreen extends StatelessWidget {
                               backgroundColor: Colors.red.shade700,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                               elevation: 8,
                               shadowColor: Colors.red.withOpacity(0.5),
                             ),
@@ -387,9 +382,16 @@ class SOSScreen extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Confirm SOS",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          "Confirm SOS",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         content: const Text(
           "This will immediately notify your parents/guardians.\nAre you sure?",
           style: TextStyle(fontSize: 16),
@@ -400,7 +402,8 @@ class SOSScreen extends StatelessWidget {
               side: const BorderSide(color: Colors.black, width: 2),
               foregroundColor: Colors.black,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             onPressed: () => Navigator.pop(context, false),
             child: const Text("Cancel"),
@@ -410,7 +413,8 @@ class SOSScreen extends StatelessWidget {
               backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                borderRadius: BorderRadius.circular(16),
+              ),
             ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text("Yes, Send SOS"),

@@ -6,6 +6,7 @@ import 'package:LearnXtraParent/services/api_service.dart';
 import 'package:LearnXtraParent/services/local_storage.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import '../../constants/app_colors.dart';
 
@@ -309,6 +310,12 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
                       // Full Name
                       _buildTextField(
                         label: "Full Name",
+                        textCapitalization: TextCapitalization.words,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'[a-zA-Z\s]')),
+                          LengthLimitingTextInputFormatter(50),
+                        ],
                         controller: _fullNameController,
                         icon: Icons.person_outline,
                         validator: (v) => (v?.trim().isEmpty ?? true)
@@ -319,6 +326,7 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
 
                       // Email (Optional)
                       _buildTextField(
+                        textCapitalization: TextCapitalization.none,
                         label: "Email (Optional)",
                         controller: _emailController,
                         icon: Icons.email_outlined,
@@ -336,6 +344,7 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
 
                       _buildTextField(
                         label: "Address",
+                        textCapitalization: TextCapitalization.words,
                         controller: _addressController,
                         icon: Icons.home_outlined,
                         maxLines: 2,
@@ -348,6 +357,11 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
                       // Pin Code
                       _buildTextField(
                         label: "Pin Code",
+                        textCapitalization: TextCapitalization.none,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(6),
+                        ],
                         controller: _pinCodeController,
                         icon: Icons.pin_drop_outlined,
                         keyboardType: TextInputType.number,
@@ -410,6 +424,8 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
     int maxLines = 1,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+    List<TextInputFormatter> inputFormatters = const [],
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,6 +440,8 @@ class _ParentProfileSetupScreenState extends State<ParentProfileSetupScreen> {
         ),
         const SizedBox(height: 5),
         TextFormField(
+          textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
           controller: controller,
           keyboardType: keyboardType,
           validator: validator,

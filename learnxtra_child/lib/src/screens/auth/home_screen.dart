@@ -12,8 +12,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = Get.find<AppStateController>();
 
-    // NOTE: LinkDeviceScreen is no longer returned from HomeScreen.
-    // The splash now routes to LinkDeviceScreen if the app isn't linked.
     return Obx(() {
       if (app.isAttemptingQuiz.value) {
         return const DailyQuizInstructionScreen();

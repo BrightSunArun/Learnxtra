@@ -1,7 +1,9 @@
 import 'package:LearnXtraChild/src/services/api_service.dart';
+// import 'package:LearnXtraChild/src/services/kiosk_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:LearnXtraChild/src/utils/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart'; // ← NEW IMPORT
 
 class EmergencyCallScreen extends StatefulWidget {
   const EmergencyCallScreen({super.key});
@@ -45,7 +47,8 @@ class _EmergencyCallScreenState extends State<EmergencyCallScreen> {
       if (mounted) {
         setState(() {
           _emergencyContacts = List<Map<String, dynamic>>.from(
-              response['EmergencyContact'] ?? []);
+            response['EmergencyContact'] ?? [],
+          );
           _isLoading = false;
         });
       }
@@ -54,6 +57,32 @@ class _EmergencyCallScreenState extends State<EmergencyCallScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load contacts: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    // await KioskService.disableKiosk();
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: phoneNumber.trim(),
+    );
+
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not launch phone dialer')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error launching call: $e')),
         );
       }
     }
@@ -200,20 +229,18 @@ class _EmergencyCallScreenState extends State<EmergencyCallScreen> {
         ),
         trailing: IconButton(
           icon: Icon(Icons.call, color: AppColors.primaryTeal, size: 28),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Calling feature coming soon'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
+          onPressed: phone != '—' && phone.isNotEmpty
+              ? () => _makePhoneCall(phone) // ← NOW CALLS
+              : null,
         ),
       ),
     );
   }
 
   Widget _quickEmergencyTile(String label, String number) {
+    // Extract first number (before /) for calling
+    final callNumber = number.split('/').first.trim();
+
     return Card(
       color: Colors.white,
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -221,13 +248,23 @@ class _EmergencyCallScreenState extends State<EmergencyCallScreen> {
       child: ListTile(
         leading: const Icon(Icons.emergency_share_rounded, color: Colors.red),
         title: Text(label),
-        trailing: Text(
-          number,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.red,
-            fontSize: 17,
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              number,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.red,
+                fontSize: 17,
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.call, color: Colors.red),
+              onPressed: () => _makePhoneCall(callNumber),
+            ),
+          ],
         ),
       ),
     );

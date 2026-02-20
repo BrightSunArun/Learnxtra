@@ -14,6 +14,16 @@ class PersistentNavBar extends StatefulWidget {
 }
 
 class _PersistentNavBarState extends State<PersistentNavBar> {
+  // @override
+  // void initState() {
+  //   enableKioskMode();
+  //   super.initState();
+  // }
+
+  // void enableKioskMode() async {
+  //   await KioskService.enableKiosk();
+  // }
+
   final controller = Get.put(NavController());
 
   final List<GlobalKey<NavigatorState>> _navigatorKeys = List.generate(

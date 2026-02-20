@@ -335,13 +335,9 @@ class ApiService extends GetxService {
       print('  • Error type    : ${e.runtimeType}');
       print('  • Error message : $e');
       print('  • Stack trace   :');
-      print(
-          '    ${stackTrace.toString().split('\n').take(8).join('\n    ')}'); // first 8 lines
+      print('    ${stackTrace.toString().split('\n').take(8).join('\n    ')}');
 
-      // You can also log to your error tracking service here if you have one
-      // await Sentry.captureException(e, stackTrace: stackTrace); // example
-
-      rethrow; // ← important: keep throwing so caller can handle it
+      rethrow;
     }
   }
 
@@ -425,6 +421,31 @@ class ApiService extends GetxService {
     return response as Map<String, dynamic>;
   }
 
+  Future<dynamic> getSubjects() async {
+    final response = await get(
+      'admin/subjects',
+      requireAuth: false,
+    );
+    return response;
+  }
+
+  Future<dynamic> getGrades() async {
+    final response = await get(
+      'admin/grades',
+      requireAuth: false,
+    );
+    return response;
+  }
+
+  Future<dynamic> getBoards({String? name}) async {
+    final response = await _performRequest(
+      'GET',
+      'admin/boards',
+      requireAuth: false,
+    );
+    return response;
+  }
+
   Future<Map<String, dynamic>> addChild({
     required String name,
     required int grade,
@@ -433,7 +454,6 @@ class ApiService extends GetxService {
     required String state,
     required String schoolName,
     required String schoolAddress,
-    required List<String> subjects,
   }) async {
     print(
         "\n\naddChild called on ApiService instance ${this.hashCode}, token: ${token.value}\n\n");
@@ -446,7 +466,6 @@ class ApiService extends GetxService {
       "state": state,
       "schoolName": schoolName,
       "schoolAddress": schoolAddress,
-      "subjects": subjects
     };
 
     final response = await post(
@@ -776,6 +795,26 @@ class ApiService extends GetxService {
     );
   }
 
+  /// DELETE parent account. Uses parentId in URL. requireAuth = true.
+  Future<Map<String, dynamic>> deleteParent(String parentId) async {
+    final path = 'parent/$parentId';
+
+    final response = await _performRequest(
+      'DELETE',
+      path,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format from delete parent',
+      statusCode: 500,
+    );
+  }
+
   Future<Map<String, dynamic>> getChildLearningProgress(String childId) async {
     final path = 'child/$childId/learning-progress';
     final response = await get(
@@ -967,5 +1006,113 @@ class ApiService extends GetxService {
       print('└───────────────────────────────────────────────');
       rethrow;
     }
+  }
+
+  Future<Map<String, dynamic>> setParentPin({
+    required String parentId,
+    required String pinCode,
+  }) async {
+    final path = 'parent/$parentId/pin/set';
+
+    final body = {
+      "pin_code": pinCode,
+    };
+
+    final response = await post(
+      path,
+      body: body,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format when setting parent PIN',
+      statusCode: 500,
+    );
+  }
+
+  Future<Map<String, dynamic>> changeParentPin({
+    required String parentId,
+    required String oldPin,
+    required String newPin,
+  }) async {
+    final path = 'parent/$parentId/pin/change';
+
+    final body = {
+      "old_pin": oldPin,
+      "new_pin": newPin,
+    };
+
+    final response = await post(
+      path,
+      body: body,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format when changing parent PIN',
+      statusCode: 500,
+    );
+  }
+
+  Future<Map<String, dynamic>> getParentPinStatus({
+    required String parentId,
+  }) async {
+    final path = 'parent/$parentId/pin/status';
+
+    final response = await get(
+      path,
+      requireAuth: true,
+    );
+
+    if (response is Map<String, dynamic>) {
+      return response;
+    }
+
+    throw ApiException(
+      message: 'Unexpected response format from parent PIN status',
+      statusCode: 500,
+    );
+  }
+
+  Future<dynamic> getParentPerformance({
+    required String parentId,
+    required String childId,
+    required int year,
+    required int month,
+    String type = 'yearly',
+  }) async {
+    final path = 'parent-performance/$parentId';
+    final queryParams = <String, String>{
+      'type': type,
+      'child_id': childId,
+      'year': year.toString(),
+      'month': month.toString(),
+    };
+    return get(path, queryParameters: queryParams, requireAuth: true);
+  }
+
+  Future<dynamic> getParentUsage({
+    required String parentId,
+    required String childId,
+    required int year,
+    required int month,
+    String type = 'yearly',
+  }) async {
+    final path = 'parent-usage/$parentId';
+    final queryParams = <String, String>{
+      'type': type,
+      'child_id': childId,
+      'year': year.toString(),
+      'month': month.toString(),
+    };
+    return get(path, queryParameters: queryParams, requireAuth: true);
   }
 }

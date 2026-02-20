@@ -11,9 +11,6 @@ import 'package:LearnXtraChild/src/screens/parent_mode_screen.dart';
 import 'package:LearnXtraChild/src/screens/quiz/quiz_instructions.dart';
 import 'package:LearnXtraChild/src/screens/quiz/subject_selection_screen.dart';
 import 'package:LearnXtraChild/src/screens/quiz/quiz_screen.dart';
-import 'package:LearnXtraChild/src/screens/quiz/quiz_passed.dart';
-import 'package:LearnXtraChild/src/screens/quiz/quiz_failed.dart';
-import 'package:LearnXtraChild/src/screens/quiz/quiz_results_screen.dart';
 
 class AppRoutes {
   // 🟦 AUTH + INIT
@@ -92,57 +89,6 @@ class AppRoutes {
       page: () => QuizScreen(subject: Get.arguments),
       transition: Transition.rightToLeftWithFade,
     ),
-    GetPage(
-      name: quizPassed,
-      page: () => QuizPassedScreen(
-        correct: Get.arguments["correct"],
-        quizSummary: Get.arguments["summary"],
-      ),
-      transition: Transition.fadeIn,
-    ),
-    GetPage(
-      name: quizFailed,
-      page: () => QuizFailedScreen(
-        correct: Get.arguments["correct"],
-        quizSummary: Get.arguments["summary"],
-      ),
-      transition: Transition.fadeIn,
-    ),
-    GetPage(
-      name: quizResults,
-      page: () {
-        final dynamic args = Get.arguments;
-        List<Map<String, dynamic>> summary = [];
-        String? calledFrom;
-
-        if (args is Map) {
-          // If callers passed a map like {'summary': [...], 'calledFrom': 'pass'}
-          final dynamic rawSummary = args['summary'];
-          if (rawSummary is List) {
-            // Attempt to cast list elements to Map<String, dynamic>
-            summary = List<Map<String, dynamic>>.from(
-              rawSummary.map((e) => Map<String, dynamic>.from(e as Map)),
-            );
-          }
-          if (args.containsKey('calledFrom')) {
-            calledFrom = args['calledFrom'] as String?;
-          }
-        } else if (args is List) {
-          // If callers passed the list directly
-          summary = List<Map<String, dynamic>>.from(
-            args.map((e) => Map<String, dynamic>.from(e as Map)),
-          );
-        }
-
-        return QuizResultsScreen(
-          quizSummary: summary,
-          calledFrom: calledFrom,
-        );
-      },
-      transition: Transition.upToDown,
-    ),
-
-    // OTHER
     GetPage(
       name: emergency,
       page: () => const EmergencyCallScreen(),

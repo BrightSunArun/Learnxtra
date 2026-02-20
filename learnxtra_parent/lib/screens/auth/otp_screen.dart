@@ -2,6 +2,7 @@
 
 import 'package:LearnXtraParent/controller/app_state.dart';
 import 'package:LearnXtraParent/screens/main_navigation.dart';
+import 'package:LearnXtraParent/screens/settings/terms_conditions.dart';
 import 'package:LearnXtraParent/utils/snackbar.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ class _OTPScreenState extends State<OTPScreen> {
   final api = Get.find<ApiService>();
   bool _isVerifying = false;
   late final AppStateController _stateController;
+  bool _isChecked = false;
 
   @override
   void initState() {
@@ -38,6 +40,13 @@ class _OTPScreenState extends State<OTPScreen> {
   }
 
   Future<void> _verifyOtp() async {
+    if (!_isChecked) {
+      getSnackbar(
+        title: "Error",
+        message: "Please agree to Terms and Conditions",
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isVerifying = true);
     try {
@@ -86,6 +95,10 @@ class _OTPScreenState extends State<OTPScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('parentMobileNumber', widget.mobileNumber);
         print("Mobile number saved: ${widget.mobileNumber}");
+        await prefs.setBool('isNewUser', isNewUser);
+        print("isNewUser saved: $isNewUser");
+        await prefs.setString('parentId', parentId);
+        print("Parent ID saved: $parentId");
 
         bool hasProfile = isNewUser == true ? false : true;
 
@@ -266,6 +279,39 @@ class _OTPScreenState extends State<OTPScreen> {
                         height: 40,
                         color: AppColors.primaryTeal,
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _isChecked,
+                          onChanged: (value) {
+                            setState(() {
+                              _isChecked = value!;
+                            });
+                          },
+                        ),
+                        InkWell(
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const TermsConditionsScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            "Agree to Terms and Conditions",
+                            style: TextStyle(
+                              color: AppColors.primaryTeal,
+                              height: 2,
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppColors.primaryTeal,
+                              decorationThickness: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 48),
                     SizedBox(

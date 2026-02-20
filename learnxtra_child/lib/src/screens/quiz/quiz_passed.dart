@@ -1,7 +1,7 @@
+import 'package:LearnXtraChild/src/screens/quiz/quiz_results_screen.dart';
+import 'package:LearnXtraChild/src/utils/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
-import 'package:LearnXtraChild/src/routes/app_routes.dart';
 
 class QuizPassedScreen extends StatelessWidget {
   final int? correct;
@@ -17,29 +17,33 @@ class QuizPassedScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final args = Get.arguments;
-    final int finalCorrect = correct ??
-        (args is Map && args['correct'] is int ? args['correct'] as int : 0);
-    final int finalTotal = total ??
-        (args is Map && args['total'] is int ? args['total'] as int : 0);
-    final List<Map<String, dynamic>> finalSummary = quizSummary ??
-        (args is Map && args['summary'] is List
-            ? List<Map<String, dynamic>>.from(args['summary'])
-            : (args is List ? List<Map<String, dynamic>>.from(args) : []));
+    final int finalCorrect = correct ?? 0;
+    final int finalTotal = total ?? 0;
+    final List<Map<String, dynamic>> finalSummary = quizSummary ?? [];
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.green.shade800,
-            Colors.green.shade600,
-            Colors.green.shade400,
-          ],
+    return Scaffold(
+      backgroundColor: AppColors.backgroundCream,
+      appBar: AppBar(
+        toolbarHeight: 80,
+        backgroundColor: AppColors.primaryTeal,
+        title: const Text(
+          'LearnXtra',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            height: 1.2,
+            fontStyle: FontStyle.italic,
+          ),
         ),
+        centerTitle: true,
+        elevation: 10,
+        surfaceTintColor: AppColors.primaryTeal,
+        shadowColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
+        scrolledUnderElevation: 16,
       ),
-      child: SafeArea(
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
@@ -71,12 +75,12 @@ class QuizPassedScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 44,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppColors.primaryTeal,
                     fontStyle: FontStyle.italic,
                     letterSpacing: 1.2,
                     shadows: [
                       Shadow(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withOpacity(0.2),
                         offset: const Offset(2, 4),
                         blurRadius: 10,
                       ),
@@ -87,10 +91,10 @@ class QuizPassedScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: AppColors.primaryTeal.withOpacity(0.25),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
+                      color: AppColors.primaryTeal.withOpacity(0.3),
                       width: 1.5,
                     ),
                   ),
@@ -101,7 +105,6 @@ class QuizPassedScreen extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
                       ),
                       const Text(
@@ -109,33 +112,30 @@ class QuizPassedScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white70,
                           letterSpacing: 1.5,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.lock_open_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      "Unlocked for 1.5 hours!",
-                      style: TextStyle(
-                        fontSize: 22,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+                // const SizedBox(height: 40),
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     const Icon(
+                //       Icons.lock_open_rounded,
+                //       size: 32,
+                //     ),
+                //     const SizedBox(width: 12),
+                //     const Text(
+                //       "Unlocked for 1.5 hours!",
+                //       style: TextStyle(
+                //         fontSize: 22,
+                //         fontWeight: FontWeight.w500,
+                //       ),
+                //     ),
+                //   ],
+                // ),
                 const SizedBox(height: 60),
                 SizedBox(
                   width: double.infinity,
@@ -143,7 +143,7 @@ class QuizPassedScreen extends StatelessWidget {
                   child: ElevatedButton.icon(
                     icon: Icon(
                       Icons.analytics_outlined,
-                      color: Colors.green.shade800,
+                      color: Colors.white,
                       size: 32,
                     ),
                     label: const Text(
@@ -153,22 +153,15 @@ class QuizPassedScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.green.shade800,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
                     onPressed: () {
-                      Get.offAllNamed(
-                        AppRoutes.quizResults,
-                        arguments: {
-                          'summary': finalSummary,
-                          'total': finalTotal,
-                          'calledFrom': 'pass',
-                        },
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => QuizResultsScreen(
+                            quizSummary: finalSummary,
+                            total: finalTotal,
+                            calledFrom: 'pass',
+                          ),
+                        ),
                       );
                     },
                   ),

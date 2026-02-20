@@ -221,7 +221,10 @@ class _ProgressScreenState extends State<ProgressScreen> {
             onTap: () {
               if (childId.isNotEmpty) {
                 Get.to(
-                  () => ChildProgressScreen(childId: childId),
+                  () => ChildProgressScreen(
+                    childId: childId,
+                    childName: name,
+                  ),
                 );
               } else {
                 Get.snackbar(
